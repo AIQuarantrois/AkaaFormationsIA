@@ -57,9 +57,15 @@ button.open:focus-visible{outline:3px solid var(--blue-mid);outline-offset:4px;b
 details>summary{cursor:pointer;font-weight:600;color:var(--ink);min-height:34px;display:flex;align-items:center}
 details[open]>summary{margin-bottom:14px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:600;max-width:calc(100vw - 32px);text-align:center}
-.tabs.scroll{display:flex;overflow-x:auto;gap:5px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.tabs.scroll::-webkit-scrollbar{display:none}
-.tabs.scroll button{flex:0 0 auto;padding-inline:16px;white-space:nowrap}
+.tabs.wrap{display:flex;flex-wrap:wrap;gap:5px}
+.tabs.wrap button{flex:1 1 118px;padding-inline:10px;white-space:nowrap}
+.wrap{max-width:560px}
+@media (min-width:720px){.wrap{max-width:740px}}
+@media (min-width:980px){.wrap{max-width:1040px}}
+@media (min-width:720px){
+  .row-wide{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .row-wide>.item{border-top:0;border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+}
 </style>
 </head>
 <body>
@@ -92,7 +98,7 @@ details[open]>summary{margin-bottom:14px}
     <section id="v-courses" class="stack" style="gap:16px">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 class="h2" style="font-size:1.3rem">Cours</h2><span class="small muted" id="newsletterCount"></span></div>
-        <div id="courseList" class="list"><p class="muted">Chargement…</p></div>
+        <div id="courseList" class="list row-wide"><p class="muted">Chargement…</p></div>
       </div>
       <details class="card">
         <summary>Nouveau cours</summary>
@@ -115,7 +121,7 @@ details[open]>summary{margin-bottom:14px}
       </div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 style="font-size:1.15rem;font-weight:800">Cohortes</h2></div>
-        <div id="cohortList" class="list"><p class="muted">Chargement…</p></div>
+        <div id="cohortList" class="list row-wide"><p class="muted">Chargement…</p></div>
       </div>
       <details class="card">
         <summary>Nouvelle cohorte</summary>
@@ -173,7 +179,7 @@ details[open]>summary{margin-bottom:14px}
         </details>
       </div>
 
-      <div class="tabs scroll" id="cohortTabs" role="tablist" aria-label="Sections">
+      <div class="tabs wrap" id="cohortTabs" role="tablist" aria-label="Sections">
         <button type="button" role="tab" data-ctab="sessions" aria-selected="true">Séances</button>
         <button type="button" role="tab" data-ctab="enr" aria-selected="false">Inscrits</button>
         <button type="button" role="tab" data-ctab="att" aria-selected="false">Présences</button>
@@ -207,7 +213,7 @@ details[open]>summary{margin-bottom:14px}
         <div class="card stack" style="gap:10px">
           <div style="display:flex;align-items:flex-end;gap:8px"><div class="big" id="enrCount">0</div><div class="muted" style="padding-bottom:4px">inscrit(s)</div></div>
         </div>
-        <div class="card"><div id="enrList" class="list"><p class="muted">Chargement…</p></div></div>
+        <div class="card"><div id="enrList" class="list row-wide"><p class="muted">Chargement…</p></div></div>
         <details class="card">
           <summary>Ajouter un inscrit</summary>
           <form class="form" id="enrForm" novalidate>
@@ -305,7 +311,7 @@ details[open]>summary{margin-bottom:14px}
         </div>
         <div class="card stack" style="gap:12px">
           <h2 class="h2" style="font-size:1.15rem">Feuillet d'accueil</h2>
-          <p class="small muted">Une page A4 : programme, infos pratiques, wifi, lien vers la fiche de présence.</p>
+          <p class="small muted">Une page A4 par inscrit, personnalisée à son prénom : programme, infos pratiques, wifi, lien vers la fiche de présence.</p>
           <button type="button" class="btn" id="dlFeuillet">Télécharger le feuillet (PDF)</button>
           <div class="err" id="feuilletErr" role="alert" hidden></div>
         </div>
@@ -316,7 +322,7 @@ details[open]>summary{margin-bottom:14px}
     <section id="v-team" class="stack" style="gap:16px" hidden>
       <div class="card stack" style="gap:14px">
         <h2 class="h2">Organisateurs</h2>
-        <div id="userList" class="list"><p class="muted">Chargement…</p></div>
+        <div id="userList" class="list row-wide"><p class="muted">Chargement…</p></div>
       </div>
       <details class="card">
         <summary>Ajouter un organisateur</summary>

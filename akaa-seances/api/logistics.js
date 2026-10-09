@@ -171,11 +171,17 @@ async function drawBadge(page, font, fontBold, akaaLogo, qrtLogo, ox, oy, W, H, 
   page.drawText('en partenariat avec Quarantrois', { x: ox + pad, y: oy + 3.2 * mm, size: 6, font, color: MUTED });
 }
 
-/* ---- feuillet d'accueil (A4, une page) ---- */
+/* ---- feuillet d'accueil (A4, une page personnalisée par inscrit) ---- */
+const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+
 async function feuilletPdf(b, origin) {
   const cohort = await getCohort(b.cohortId);
   if (!cohort) throw httpError(400, 'cohort');
-  const [course, sessions] = await Promise.all([getCourse(cohort.courseId), listSessions(cohort.id)]);
+  const [course, sessions, enrollments] = await Promise.all([
+    getCourse(cohort.courseId), listSessions(cohort.id), listEnrollments(cohort.id),
+  ]);
+  const active = enrollments.filter((e) => e.status !== 'annule');
+  if (!active.length) throw httpError(400, 'empty');
 
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -183,6 +189,15 @@ async function feuilletPdf(b, origin) {
   const akaaLogo = await pdfDoc.embedPng(loadPng('logo-white.png'));
   const qrtLogo = await pdfDoc.embedPng(loadPng('quarantrois-horizontal-blanc.png'));
 
+  for (const enr of active) {
+    drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, origin, enr);
+  }
+
+  const bytes = await pdfDoc.save();
+  return pdfResponse(bytes, `feuillet-${cohort.slug}.pdf`);
+}
+
+function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, origin, enr) {
   const PAGE_W = 210 * mm, PAGE_H = 297 * mm;
   const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   const margin = 18 * mm, contentW = PAGE_W - 2 * margin;
@@ -198,14 +213,15 @@ async function feuilletPdf(b, origin) {
   let y = PAGE_H - bandH - 16 * mm;
   page.drawText('BIENVENUE', { x: margin, y, size: 9, font: fontBold, color: BLUE_INK });
   y -= 10 * mm;
-  const title = course ? course.title : cohort.name;
-  const titleLines = wrapText(fontBold, 22, title, contentW);
-  titleLines.forEach((ln, i) => page.drawText(ln, { x: margin, y: y - i * 9 * mm, size: 22, font: fontBold, color: INK }));
-  y -= titleLines.length * 9 * mm + 2 * mm;
+  const greeting = `Bienvenue ${firstName(enr.name)} !`;
+  page.drawText(greeting, { x: margin, y, size: 22, font: fontBold, color: INK });
+  y -= 9 * mm + 2 * mm;
 
-  const welcome = "Merci de nous rejoindre. Cette journée est pensée pour comprendre, expérimenter et appliquer l'IA concrètement.";
-  wrapText(font, 11, welcome, contentW).forEach((ln, i) => page.drawText(ln, { x: margin, y: y - i * 5.5 * mm, size: 11, font, color: BODY }));
-  y -= wrapText(font, 11, welcome, contentW).length * 5.5 * mm + 8 * mm;
+  const title = course ? course.title : cohort.name;
+  const welcome = `Nous sommes ravis de t'accueillir à ${title}. Cette journée est pensée pour comprendre, expérimenter et appliquer l'IA concrètement — pas de théorie pour la théorie.`;
+  const welcomeLines = wrapText(font, 11, welcome, contentW);
+  welcomeLines.forEach((ln, i) => page.drawText(ln, { x: margin, y: y - i * 5.5 * mm, size: 11, font, color: BODY }));
+  y -= welcomeLines.length * 5.5 * mm + 8 * mm;
 
   page.drawText('PROGRAMME', { x: margin, y, size: 9, font: fontBold, color: BLUE_INK });
   y -= 9 * mm;
@@ -251,7 +267,4 @@ async function feuilletPdf(b, origin) {
   const footY = 20 * mm;
   page.drawLine({ start: { x: margin, y: footY + 6 * mm }, end: { x: PAGE_W - margin, y: footY + 6 * mm }, thickness: 0.8, color: LINE });
   page.drawText('Comprendre. Expérimenter. Appliquer.', { x: margin, y: footY, size: 9, font, color: MUTED });
-
-  const bytes = await pdfDoc.save();
-  return pdfResponse(bytes, `feuillet-${cohort.slug}.pdf`);
 }
