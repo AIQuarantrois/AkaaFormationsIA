@@ -451,18 +451,6 @@ export async function updateEnrollment(cohortId, id, d, by) {
 export async function removeEnrollment(cohortId, id) {
   return removeBlob(`enr/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
 }
-/* Liste à choix pour la fiche de présence publique : juste de quoi reconnaître son nom,
-   rien de plus (pas de téléphone, pas d'e-mail). */
-export async function listEnrollmentRoster(cohortId, sessionId) {
-  const [enrollments, attendance] = await Promise.all([
-    listEnrollments(cohortId),
-    sessionId ? listAttendance(sessionId) : Promise.resolve([]),
-  ]);
-  const present = new Set(attendance.map((a) => a.enrollmentId));
-  return enrollments
-    .filter((e) => e.status !== 'annule')
-    .map((e) => ({ id: e.id, name: e.name, already: present.has(e.id) }));
-}
 export async function listNewsletterOptins() {
   const all = await readAll('enr/');
   return all.filter((e) => e.newsletter && e.status !== 'annule')
@@ -541,15 +529,6 @@ export async function recordFeedbackByEnrollment(cohort, session, enr, d) {
   };
   await putJson(`fb/${session.id}/${enr.id}.json`, rec, true);
   return rec;
-}
-export async function recordFeedback(cohort, session, d, by) {
-  const name = clean(d.name, 80);
-  const phone = normPhone(d.phone);
-  if (name.length < 2) throw httpError(400, 'name');
-  if (!phone) throw httpError(400, 'phone');
-  let enr = await findEnrollmentByPhone(cohort.id, phone);
-  if (!enr) enr = await createEnrollment(cohort.id, { name, phone }, by, 'avis');
-  return recordFeedbackByEnrollment(cohort, session, enr, d);
 }
 export async function listFeedback(sessionId) {
   return readAll(`fb/${clean(sessionId, 40)}/`);
