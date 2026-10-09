@@ -66,14 +66,18 @@ details[open]>summary{margin-bottom:14px}
   .row-wide{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
   .row-wide>.item{border-top:0;border:1px solid var(--line);border-radius:18px;padding:14px 16px}
 }
+@media (min-width:860px){
+  .split{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start}
+  .split>details{margin:0}
+}
 </style>
 </head>
 <body>
 
 <!-- Accès -->
 <section id="gate">
-  <div class="wrap" style="min-height:100vh;display:flex;align-items:center;padding-block:24px">
-    <form class="card form" id="gateForm" style="width:100%;gap:20px">
+  <div class="wrap" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding-block:24px">
+    <form class="card form" id="gateForm" style="width:100%;max-width:440px;gap:20px">
       <img src="/logo-blue.png" alt="Akaa" width="79" height="40" style="height:40px;width:auto;align-self:center">
       <div class="stack" style="gap:10px"><div class="eyebrow">Espace organisateur</div><h1 class="display" id="gateTitle" style="font-size:2.1rem">Heureux de vous retrouver.</h1></div>
       <div class="field"><label for="user">Identifiant</label><input type="text" id="user" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
@@ -96,20 +100,22 @@ details[open]>summary{margin-bottom:14px}
 
     <!-- Cours -->
     <section id="v-courses" class="stack" style="gap:16px">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 class="h2" style="font-size:1.3rem">Cours</h2><span class="small muted" id="newsletterCount"></span></div>
-        <div id="courseList" class="list row-wide"><p class="muted">Chargement…</p></div>
+      <div class="split">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 class="h2" style="font-size:1.3rem">Cours</h2><span class="small muted" id="newsletterCount"></span></div>
+          <div id="courseList" class="list row-wide"><p class="muted">Chargement…</p></div>
+        </div>
+        <details class="card">
+          <summary>Nouveau cours</summary>
+          <form class="form" id="courseForm" novalidate>
+            <div class="field"><label for="crTitle">Titre</label><input type="text" id="crTitle" placeholder="Reprendre la main sur l’IA"></div>
+            <div class="field"><label for="crSummary">Résumé <span class="muted" style="font-weight:400">(facultatif)</span></label><textarea id="crSummary"></textarea></div>
+            <div class="field"><label for="crLocation">Lieu par défaut <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="crLocation" placeholder="Koon Space, Ambatonakanga"></div>
+            <div class="err" id="courseErr" role="alert" hidden></div>
+            <button type="submit" class="btn">Créer</button>
+          </form>
+        </details>
       </div>
-      <details class="card">
-        <summary>Nouveau cours</summary>
-        <form class="form" id="courseForm" novalidate>
-          <div class="field"><label for="crTitle">Titre</label><input type="text" id="crTitle" placeholder="Reprendre la main sur l’IA"></div>
-          <div class="field"><label for="crSummary">Résumé <span class="muted" style="font-weight:400">(facultatif)</span></label><textarea id="crSummary"></textarea></div>
-          <div class="field"><label for="crLocation">Lieu par défaut <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="crLocation" placeholder="Koon Space, Ambatonakanga"></div>
-          <div class="err" id="courseErr" role="alert" hidden></div>
-          <button type="submit" class="btn">Créer</button>
-        </form>
-      </details>
     </section>
 
     <!-- Cohortes d'un cours -->
@@ -119,31 +125,33 @@ details[open]>summary{margin-bottom:14px}
         <h2 class="h2" id="cohortsCourseTitle"></h2>
         <p class="muted" id="cohortsCourseSummary"></p>
       </div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 style="font-size:1.15rem;font-weight:800">Cohortes</h2></div>
-        <div id="cohortList" class="list row-wide"><p class="muted">Chargement…</p></div>
+      <div class="split">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 style="font-size:1.15rem;font-weight:800">Cohortes</h2></div>
+          <div id="cohortList" class="list row-wide"><p class="muted">Chargement…</p></div>
+        </div>
+        <details class="card">
+          <summary>Nouvelle cohorte</summary>
+          <form class="form" id="cohortForm" novalidate>
+            <div class="field"><label for="coName">Nom</label><input type="text" id="coName" placeholder="Octobre 2026"></div>
+            <div class="row">
+              <div class="field"><label for="coStart">Début</label><input type="date" id="coStart"></div>
+              <div class="field"><label for="coEnd">Fin</label><input type="date" id="coEnd"></div>
+            </div>
+            <div class="field"><label for="coLocation">Lieu</label><input type="text" id="coLocation"></div>
+            <div class="field"><label for="coLink">Lien visio <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="coLink"></div>
+            <div class="row">
+              <div class="field"><label for="coPrice">Tarif (Ar)</label><input type="number" id="coPrice" inputmode="numeric" min="0" step="1000" value="200000"></div>
+              <div class="field"><label for="coCapacity">Places <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="number" id="coCapacity" inputmode="numeric" min="1"></div>
+            </div>
+            <div class="field"><span class="lbl">Statut</span>
+              <select id="coStatus"><option value="brouillon">Brouillon</option><option value="ouverte">Ouverte</option><option value="terminee">Terminée</option><option value="annulee">Annulée</option></select>
+            </div>
+            <div class="err" id="cohortErr" role="alert" hidden></div>
+            <button type="submit" class="btn">Créer</button>
+          </form>
+        </details>
       </div>
-      <details class="card">
-        <summary>Nouvelle cohorte</summary>
-        <form class="form" id="cohortForm" novalidate>
-          <div class="field"><label for="coName">Nom</label><input type="text" id="coName" placeholder="Octobre 2026"></div>
-          <div class="row">
-            <div class="field"><label for="coStart">Début</label><input type="date" id="coStart"></div>
-            <div class="field"><label for="coEnd">Fin</label><input type="date" id="coEnd"></div>
-          </div>
-          <div class="field"><label for="coLocation">Lieu</label><input type="text" id="coLocation"></div>
-          <div class="field"><label for="coLink">Lien visio <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="coLink"></div>
-          <div class="row">
-            <div class="field"><label for="coPrice">Tarif (Ar)</label><input type="number" id="coPrice" inputmode="numeric" min="0" step="1000" value="200000"></div>
-            <div class="field"><label for="coCapacity">Places <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="number" id="coCapacity" inputmode="numeric" min="1"></div>
-          </div>
-          <div class="field"><span class="lbl">Statut</span>
-            <select id="coStatus"><option value="brouillon">Brouillon</option><option value="ouverte">Ouverte</option><option value="terminee">Terminée</option><option value="annulee">Annulée</option></select>
-          </div>
-          <div class="err" id="cohortErr" role="alert" hidden></div>
-          <button type="submit" class="btn">Créer</button>
-        </form>
-      </details>
     </section>
 
     <!-- Détail d'une cohorte -->
@@ -191,21 +199,23 @@ details[open]>summary{margin-bottom:14px}
 
       <!-- Séances -->
       <section id="t-sessions" class="stack" style="gap:16px">
-        <div class="card"><div id="sessionList" class="list"><p class="muted">Chargement…</p></div></div>
-        <details class="card">
-          <summary>Ajouter une séance</summary>
-          <form class="form" id="sessionForm" novalidate>
-            <div class="field"><label for="seDate">Date</label><input type="date" id="seDate"></div>
-            <div class="row">
-              <div class="field"><label for="seStart">Début</label><input type="time" id="seStart"></div>
-              <div class="field"><label for="seEnd">Fin</label><input type="time" id="seEnd"></div>
-            </div>
-            <div class="field"><label for="seLocation">Lieu <span class="muted" style="font-weight:400">(facultatif, sinon celui de la cohorte)</span></label><input type="text" id="seLocation"></div>
-            <div class="field"><label for="seTopic">Sujet <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="seTopic"></div>
-            <div class="err" id="sessionErr" role="alert" hidden></div>
-            <button type="submit" class="btn">Ajouter</button>
-          </form>
-        </details>
+        <div class="split">
+          <div class="card"><div id="sessionList" class="list"><p class="muted">Chargement…</p></div></div>
+          <details class="card">
+            <summary>Ajouter une séance</summary>
+            <form class="form" id="sessionForm" novalidate>
+              <div class="field"><label for="seDate">Date</label><input type="date" id="seDate"></div>
+              <div class="row">
+                <div class="field"><label for="seStart">Début</label><input type="time" id="seStart"></div>
+                <div class="field"><label for="seEnd">Fin</label><input type="time" id="seEnd"></div>
+              </div>
+              <div class="field"><label for="seLocation">Lieu <span class="muted" style="font-weight:400">(facultatif, sinon celui de la cohorte)</span></label><input type="text" id="seLocation"></div>
+              <div class="field"><label for="seTopic">Sujet <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="seTopic"></div>
+              <div class="err" id="sessionErr" role="alert" hidden></div>
+              <button type="submit" class="btn">Ajouter</button>
+            </form>
+          </details>
+        </div>
       </section>
 
       <!-- Inscrits -->
@@ -213,6 +223,7 @@ details[open]>summary{margin-bottom:14px}
         <div class="card stack" style="gap:10px">
           <div style="display:flex;align-items:flex-end;gap:8px"><div class="big" id="enrCount">0</div><div class="muted" style="padding-bottom:4px">inscrit(s)</div></div>
         </div>
+        <div class="split">
         <div class="card"><div id="enrList" class="list row-wide"><p class="muted">Chargement…</p></div></div>
         <details class="card">
           <summary>Ajouter un inscrit</summary>
@@ -226,6 +237,7 @@ details[open]>summary{margin-bottom:14px}
             <button type="submit" class="btn">Ajouter</button>
           </form>
         </details>
+        </div>
       </section>
 
       <!-- Présences -->
@@ -320,19 +332,21 @@ details[open]>summary{margin-bottom:14px}
 
     <!-- Équipe -->
     <section id="v-team" class="stack" style="gap:16px" hidden>
-      <div class="card stack" style="gap:14px">
-        <h2 class="h2">Organisateurs</h2>
-        <div id="userList" class="list row-wide"><p class="muted">Chargement…</p></div>
+      <div class="split">
+        <div class="card stack" style="gap:14px">
+          <h2 class="h2">Organisateurs</h2>
+          <div id="userList" class="list row-wide"><p class="muted">Chargement…</p></div>
+        </div>
+        <details class="card">
+          <summary>Ajouter un organisateur</summary>
+          <form class="form" id="userForm" novalidate>
+            <div class="field"><label for="uUser">Identifiant</label><input type="text" id="uUser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+            <div class="field"><label for="uPass">Mot de passe</label><input type="password" id="uPass" autocomplete="new-password"><span class="hint">8 caractères minimum.</span></div>
+            <div class="err" id="userErr" role="alert" hidden></div>
+            <button type="submit" class="btn">Ajouter</button>
+          </form>
+        </details>
       </div>
-      <details class="card">
-        <summary>Ajouter un organisateur</summary>
-        <form class="form" id="userForm" novalidate>
-          <div class="field"><label for="uUser">Identifiant</label><input type="text" id="uUser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-          <div class="field"><label for="uPass">Mot de passe</label><input type="password" id="uPass" autocomplete="new-password"><span class="hint">8 caractères minimum.</span></div>
-          <div class="err" id="userErr" role="alert" hidden></div>
-          <button type="submit" class="btn">Ajouter</button>
-        </form>
-      </details>
       <div class="card stack" style="gap:10px">
         <h2 class="h2">Historique</h2>
         <div id="logList" class="list"><p class="muted">Chargement…</p></div>
