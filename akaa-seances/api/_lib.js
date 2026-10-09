@@ -389,17 +389,18 @@ export async function getEnrollment(cohortId, id) {
   return rec || null;
 }
 export async function findEnrollmentByPhone(cohortId, phone) {
+  if (!phone) return null;
   const all = await listEnrollments(cohortId);
   return all.find((e) => e.phone === phone) || null;
 }
-export async function createEnrollment(cohortId, d, by, source) {
+export async function createEnrollment(cohortId, d, by, source, requirePhone = true) {
   const cohort = await getCohort(cohortId);
   if (!cohort) throw httpError(400, 'cohort');
   const name = clean(d.name, 80);
   const phone = normPhone(d.phone);
   if (name.length < 2) throw httpError(400, 'name');
-  if (!phone) throw httpError(400, 'phone');
-  if (await findEnrollmentByPhone(cohortId, phone)) throw httpError(409, 'already_enrolled');
+  if (requirePhone && !phone) throw httpError(400, 'phone');
+  if (phone && await findEnrollmentByPhone(cohortId, phone)) throw httpError(409, 'already_enrolled');
   const id = newId();
   const rec = {
     id, cohortId, name, phone,
@@ -415,6 +416,15 @@ export async function updateEnrollment(cohortId, id, d, by) {
   if (!cur) throw httpError(404, 'enrollment');
   const next = { ...cur };
   if (d.name != null) next.name = clean(d.name, 80);
+  if (d.phone != null) {
+    const p = normPhone(d.phone);
+    if (d.phone && !p) throw httpError(400, 'phone');
+    if (p && p !== cur.phone) {
+      const existing = await findEnrollmentByPhone(cohortId, p);
+      if (existing && existing.id !== id) throw httpError(409, 'already_enrolled');
+    }
+    next.phone = p;
+  }
   if (d.email != null) next.email = clean(d.email, 120);
   if (d.company != null) next.company = clean(d.company, 120);
   if (d.status != null) next.status = d.status === 'annule' ? 'annule' : 'inscrit';

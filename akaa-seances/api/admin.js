@@ -160,7 +160,7 @@ async function doRemoveSession(by, b) {
 
 /* ---- inscriptions ---- */
 async function addEnrollment(by, b) {
-  const enr = await createEnrollment(b.cohortId, b, by, 'manuel');
+  const enr = await createEnrollment(b.cohortId, b, by, 'manuel', false);
   await logAction(by, 'addEnrollment', enr.name);
   return { ok: true, enrollment: enr };
 }
