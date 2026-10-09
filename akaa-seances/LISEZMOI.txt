@@ -2,11 +2,18 @@ Akaa Séances : présence, avis et reçus (site Vercel)
 
 1. Créer un projet Vercel nommé akaa-seances (importer ce dossier depuis GitHub, ou : vercel deploy dans ce dossier).
 2. Storage > Create > Blob, accès PRIVÉ, connecté au projet (ajoute BLOB_READ_WRITE_TOKEN).
-3. Settings > Environment Variables (Production) :
-   ADMIN_PIN     = mot de passe organisateur, choisi par vous, mémorisable (10 caractères ou plus)
-4. Redéployer. Participants : /   Organisateur : /admin (connexion par mot de passe,
-   le navigateur reste connecté 12h ; changer ADMIN_PIN déconnecte toutes les sessions en cours)
+3. Aucune variable d'environnement à configurer.
+4. Redéployer. Participants : /   Organisateur : /admin
 
-Le code de séance (4 chiffres) n'est plus à configurer : il est généré automatiquement
-à la première consultation de /admin pour chaque séance, et affiché là pour
-l'organisateur — il n'y a qu'à le lire et l'annoncer dans la salle.
+Comptes organisateurs : à la toute première ouverture de /admin, l'écran propose de
+créer le premier compte (identifiant + mot de passe, choisis par vous). Une fois
+connecté, l'onglet « Équipe » permet d'inviter d'autres organisateurs (chacun son
+compte). Chaque session de connexion reste valable 12h sur l'appareil utilisé ; passé
+ce délai, ou sur un nouvel appareil, il faut se reconnecter avec son identifiant et
+son mot de passe. Toutes les actions (ajout/retrait de présence, émission/annulation
+de reçu, ajout d'organisateur) sont historisées et consultables dans l'onglet
+« Équipe » (qui, quoi, quand).
+
+Le code de séance (4 chiffres, pour les participants) n'est pas à configurer : il est
+généré automatiquement à la première consultation de /admin pour chaque séance, et
+affiché là pour l'organisateur — il n'y a qu'à le lire et l'annoncer dans la salle.

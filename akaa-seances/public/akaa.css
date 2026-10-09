@@ -36,6 +36,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tabs button{min-height:48px;border:0;background:transparent;border-radius:13px;font-weight:600;color:var(--muted);cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--blue);color:#fff;box-shadow:0 3px 0 var(--blue-dark)}
 .tabs.three{grid-template-columns:repeat(3,1fr)}
+.tabs.four{grid-template-columns:repeat(4,1fr)}
 
 /* Cartes */
 .card{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:22px;min-width:0;box-shadow:0 12px 40px -18px rgba(15,30,60,.18)}

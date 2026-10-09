@@ -66,7 +66,8 @@ details[open]>summary{margin-bottom:14px}
   <div class="wrap" style="min-height:100vh;display:flex;align-items:center;padding-block:24px">
     <form class="card form" id="gateForm" style="width:100%;gap:20px">
       <img src="/logo-blue.png" alt="Akaa" width="79" height="40" style="height:40px;width:auto;align-self:center">
-      <div class="stack" style="gap:10px"><div class="eyebrow">Espace organisateur</div><h1 class="display" style="font-size:2.1rem">Heureux de vous retrouver.</h1></div>
+      <div class="stack" style="gap:10px"><div class="eyebrow">Espace organisateur</div><h1 class="display" id="gateTitle" style="font-size:2.1rem">Heureux de vous retrouver.</h1></div>
+      <div class="field"><label for="user">Identifiant</label><input type="text" id="user" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="field"><label for="pin">Mot de passe</label><input type="password" id="pin" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="err" id="gateErr" role="alert" hidden></div>
       <button type="submit" class="btn" id="gateBtn">Entrer</button>
@@ -87,10 +88,11 @@ details[open]>summary{margin-bottom:14px}
       <button type="button" class="btn ghost sm" id="qrBtn" style="flex:0 0 auto">Afficher le QR</button>
     </div>
 
-    <div class="tabs three" role="tablist" aria-label="Sections">
+    <div class="tabs four" role="tablist" aria-label="Sections">
       <button type="button" role="tab" data-tab="pres" aria-selected="true">Présences</button>
       <button type="button" role="tab" data-tab="avis" aria-selected="false">Avis</button>
       <button type="button" role="tab" data-tab="rec" aria-selected="false">Reçus</button>
+      <button type="button" role="tab" data-tab="team" aria-selected="false">Équipe</button>
     </div>
 
     <div class="seg" id="sessSeg" role="group" aria-label="Séance">
@@ -163,6 +165,27 @@ details[open]>summary{margin-bottom:14px}
         </form>
       </details>
     </section>
+
+    <!-- Équipe -->
+    <section id="t-team" class="stack" style="gap:16px" hidden>
+      <div class="card stack" style="gap:14px">
+        <h2 class="h2">Organisateurs</h2>
+        <div id="userList" class="list"><p class="muted">Chargement…</p></div>
+      </div>
+      <details class="card">
+        <summary>Ajouter un organisateur</summary>
+        <form class="form" id="userForm" novalidate>
+          <div class="field"><label for="uUser">Identifiant</label><input type="text" id="uUser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+          <div class="field"><label for="uPass">Mot de passe</label><input type="password" id="uPass" autocomplete="new-password"><span class="hint">8 caractères minimum. La personne pourra le changer en se créant un nouveau compte si besoin.</span></div>
+          <div class="err" id="userErr" role="alert" hidden></div>
+          <button type="submit" class="btn">Ajouter</button>
+        </form>
+      </details>
+      <div class="card stack" style="gap:10px">
+        <h2 class="h2">Historique</h2>
+        <div id="logList" class="list"><p class="muted">Chargement…</p></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -199,10 +222,12 @@ var REC={'oui':'Recommande','peut-etre':'Peut-être','non':'Ne recommande pas'};
 var fmtAr=function(n){return Math.round(Number(n)||0).toLocaleString('fr-FR').replace(/[  ]/g,' ')+' Ar'};
 var fmtDate=function(i){var p=String(i||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''};
 var fmtTime=function(i){try{return new Date(i).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Indian/Antananarivo'})}catch(e){return ''}};
+var fmtWhen=function(i){try{return new Date(i).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short',timeZone:'Indian/Antananarivo'})}catch(e){return ''}};
+var ACTION_LABELS={setup:'Création du compte',addUser:'Ajout d’un organisateur',addPresence:'Ajout d’une présence',removePresence:'Retrait d’une présence',issueReceipt:'Émission d’un reçu',voidReceipt:'Annulation d’un reçu',saveSettings:'Mise à jour des mentions'};
 var todayISO=function(){try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Antananarivo'}).format(new Date())}catch(e){return new Date().toISOString().slice(0,10)}};
 var showPhone=function(p){return p?'+'+p.replace(/^(\d{3})(\d{2})(\d{3})(\d{2})(\d{2})$/,'$1 $2 $3 $4 $5'):''};
 
-var TOKEN='',D=null,sid='s1',tab='pres',viewing=null,confirmVoid=null,confirmRm=null,timer=null,busy=false;
+var TOKEN='',D=null,sid='s1',tab='pres',SETUP=false,viewing=null,confirmVoid=null,confirmRm=null,timer=null,busy=false;
 try{TOKEN=localStorage.getItem('akaa_admin_token')||''}catch(e){}
 
 var tT=null;
@@ -221,7 +246,7 @@ function api(action,data){
     .catch(function(){var e=new Error('network');throw e})
     .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok){var e=new Error(j.error||'server');e.status=r.status;throw e}return j})});
 }
-var ERR={network:'Pas de connexion.',phone:'Numéro invalide. Exemple : 034 00 000 00.',name:'Saisis le nom.',amount:'Montant invalide.',mode:'Choisis un mode de paiement.',server:'Erreur du serveur. Réessaie.'};
+var ERR={network:'Pas de connexion.',phone:'Numéro invalide. Exemple : 034 00 000 00.',name:'Saisis le nom.',amount:'Montant invalide.',mode:'Choisis un mode de paiement.',server:'Erreur du serveur. Réessaie.',username:'Identifiant invalide (3 caractères minimum, lettres/chiffres).',weak_password:'Mot de passe trop court (8 caractères minimum).',username_taken:'Cet identifiant existe déjà.'};
 
 /* Accès */
 function enter(){
@@ -229,12 +254,22 @@ function enter(){
   refresh(true);clearInterval(timer);
   timer=setInterval(function(){if(!document.hidden&&!busy)refresh(true)},30000);
 }
+function prepareGate(){
+  return apiRaw({action:'status'}).then(function(j){
+    SETUP=!j.hasUsers;
+    $('gateTitle').textContent=SETUP?'Créez le premier compte organisateur.':'Heureux de vous retrouver.';
+    $('gateBtn').textContent=SETUP?'Créer le compte':'Entrer';
+    $('pin').setAttribute('autocomplete',SETUP?'new-password':'current-password');
+  }).catch(function(){});
+}
 $('gateForm').addEventListener('submit',function(e){
-  e.preventDefault();var password=$('pin').value.trim();$('gateErr').hidden=true;$('gateBtn').disabled=true;
-  apiRaw({action:'login',password:password})
+  e.preventDefault();
+  var username=$('user').value.trim(),password=$('pin').value.trim();
+  $('gateErr').hidden=true;$('gateBtn').disabled=true;
+  apiRaw({action:SETUP?'setup':'login',username:username,password:password})
    .then(function(j){TOKEN=j.token;try{localStorage.setItem('akaa_admin_token',TOKEN)}catch(_){}return api('overview')})
    .then(function(j){D=j;sid=j.current||'s1';enter()})
-   .catch(function(err){$('gateErr').textContent=err.status===401?'Mot de passe incorrect.':(ERR[err.message]||ERR.server);$('gateErr').hidden=false})
+   .catch(function(err){$('gateErr').textContent=err.status===401?'Identifiant ou mot de passe incorrect.':(ERR[err.message]||ERR.server);$('gateErr').hidden=false})
    .then(function(){$('gateBtn').disabled=false});
 });
 $('quitBtn').onclick=function(){try{localStorage.removeItem('akaa_admin_token')}catch(e){}location.reload()};
@@ -254,8 +289,8 @@ $('sessSeg').addEventListener('click',function(e){
 });
 function renderChrome(){
   document.querySelectorAll('.tabs button').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===tab))});
-  ['pres','avis','rec'].forEach(function(k){$('t-'+k).hidden=(k!==tab)});
-  $('sessSeg').hidden=(tab==='rec');
+  ['pres','avis','rec','team'].forEach(function(k){$('t-'+k).hidden=(k!==tab)});
+  $('sessSeg').hidden=(tab==='rec'||tab==='team');
   document.querySelectorAll('#sessSeg button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.sid===sid))});
 }
 
@@ -264,7 +299,7 @@ function renderAll(){
   if(!D)return;
   renderChrome();
   $('code').textContent=D.code||'—';
-  renderPres();renderAvis();renderRec();
+  renderPres();renderAvis();renderRec();renderTeam();
 }
 function sortedBy(arr,k){return arr.slice().sort(function(a,b){return String(a[k]).localeCompare(String(b[k]))})}
 
@@ -393,6 +428,25 @@ $('setForm').addEventListener('submit',function(e){
   e.preventDefault();api('saveSettings',{nif:$('setNif').value,stat:$('setStat').value,address:$('setAddr').value}).then(function(j){D.settings=j.settings;toast('Mentions enregistrées.');renderReceipt()}).catch(function(){toast(ERR.server)});
 });
 
+/* Équipe */
+function renderTeam(){
+  var users=(D.users||[]).slice().sort(function(a,b){return a.username.localeCompare(b.username)});
+  $('userList').innerHTML=users.length?users.map(function(u){
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(u.username)+'</div><div class="small muted">Créé le '+esc(fmtWhen(u.createdAt))+(u.createdBy&&u.createdBy!==u.username?' · par '+esc(u.createdBy):'')+'</div></div></div>';
+  }).join(''):'<p class="muted">Aucun organisateur.</p>';
+  var logs=D.logs||[];
+  $('logList').innerHTML=logs.length?logs.map(function(l){
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(ACTION_LABELS[l.action]||l.action)+'</div><div class="small muted">'+esc(fmtWhen(l.at))+' · '+esc(l.by)+(l.summary?' · '+esc(l.summary):'')+'</div></div></div>';
+  }).join(''):'<p class="muted">Aucune action enregistrée.</p>';
+}
+$('userForm').addEventListener('submit',function(e){
+  e.preventDefault();if(busy)return;busy=true;$('userErr').hidden=true;
+  api('addUser',{username:$('uUser').value,password:$('uPass').value})
+   .then(function(){$('userForm').reset();toast('Organisateur ajouté.');return refresh(true)})
+   .catch(function(er){$('userErr').textContent=ERR[er.message]||ERR.server;$('userErr').hidden=false})
+   .then(function(){busy=false});
+});
+
 /* Image du reçu */
 function wrap(ctx,text,maxW){var w=String(text).split(' '),lines=[],cur='';w.forEach(function(x){var t=cur?cur+' '+x:x;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=x}else cur=t});if(cur)lines.push(cur);return lines}
 function drawReceipt(r){
@@ -445,8 +499,10 @@ $('qrBtn').onclick=function(){
 $('qrClose').onclick=function(){$('qrOverlay').hidden=true};
 $('fallbackClose').onclick=function(){$('fallback').hidden=true};
 
-/* Reprise automatique si une session valide est déjà en mémoire */
-if(TOKEN){api('overview').then(function(j){D=j;sid=j.current||'s1';enter()}).catch(function(){try{localStorage.removeItem('akaa_admin_token')}catch(e){}})}
+/* Détection premier lancement, puis reprise automatique si une session valide est déjà en mémoire */
+prepareGate().then(function(){
+  if(TOKEN){api('overview').then(function(j){D=j;sid=j.current||'s1';enter()}).catch(function(){try{localStorage.removeItem('akaa_admin_token')}catch(e){}})}
+});
 })();
 </script>
 </body>
