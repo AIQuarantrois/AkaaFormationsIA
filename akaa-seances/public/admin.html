@@ -306,13 +306,13 @@ details[open]>summary{margin-bottom:14px}
         <div class="card stack" style="gap:12px">
           <h2 class="h2" style="font-size:1.15rem">Badges participants</h2>
           <p class="small muted">Un badge par inscrit actif (format A6, 4 par page), avec les deux séances et un QR personnel pour confirmer sa présence.</p>
-          <button type="button" class="btn" id="dlBadges">Télécharger les badges (PDF)</button>
+          <button type="button" class="btn" id="dlBadges">Aperçu des badges (PDF)</button>
           <div class="err" id="badgesErr" role="alert" hidden></div>
         </div>
         <div class="card stack" style="gap:12px">
           <h2 class="h2" style="font-size:1.15rem">Feuillet d'accueil</h2>
           <p class="small muted">Une page A4 par inscrit, personnalisée à son prénom : programme, infos pratiques, wifi, lien vers la fiche de présence.</p>
-          <button type="button" class="btn" id="dlFeuillet">Télécharger le feuillet (PDF)</button>
+          <button type="button" class="btn" id="dlFeuillet">Aperçu du feuillet (PDF)</button>
           <div class="err" id="feuilletErr" role="alert" hidden></div>
         </div>
       </section>
@@ -356,6 +356,18 @@ details[open]>summary{margin-bottom:14px}
     <p class="small muted">Copie automatique impossible. Le texte est sélectionné : copie-le.</p>
     <textarea id="fallbackTxt" readonly style="min-height:200px"></textarea>
     <button type="button" class="btn ghost" id="fallbackClose">Fermer</button>
+  </div>
+</div>
+<div id="pdfOverlay" class="qr" hidden>
+  <div class="box" style="max-width:760px;width:100%;height:90vh;align-items:stretch;text-align:left">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div class="label" id="pdfTitle">Aperçu</div>
+      <div style="display:flex;gap:8px;flex:0 0 auto">
+        <a id="pdfDownloadLink" class="btn ghost sm" download>Télécharger</a>
+        <button type="button" class="btn ghost sm" id="pdfClose">Fermer</button>
+      </div>
+    </div>
+    <iframe id="pdfFrame" title="Aperçu du document" style="flex:1;width:100%;border:1px solid var(--line);border-radius:14px;margin-top:4px;background:#fff"></iframe>
   </div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -573,21 +585,26 @@ function renderCtabChrome(){
   ['sessions','enr','att','fb','pay','perks','logistics'].forEach(function(k){$('t-'+k).hidden=(k!==ctab)});
 }
 
-/* Logistique : PDF générés par le serveur */
-function downloadPdf(action,filename,btn,errId){
+/* Logistique : PDF générés par le serveur, prévisualisés avant téléchargement */
+var pdfUrl=null;
+function previewPdf(action,filename,btn,errId,title){
   btn.disabled=true;$(errId).hidden=true;
   fetch('/api/logistics',{method:'POST',headers:{'content-type':'application/json','x-admin-token':TOKEN},body:JSON.stringify({action:action,cohortId:cohortId})})
    .then(function(r){if(!r.ok)return r.json().catch(function(){return {}}).then(function(j){throw new Error(j.error||'server')});return r.blob()})
    .then(function(blob){
-     var url=URL.createObjectURL(blob),a=document.createElement('a');
-     a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-     setTimeout(function(){URL.revokeObjectURL(url)},4000);
+     if(pdfUrl)URL.revokeObjectURL(pdfUrl);
+     pdfUrl=URL.createObjectURL(blob);
+     $('pdfTitle').textContent=title;
+     $('pdfFrame').src=pdfUrl;
+     $('pdfDownloadLink').href=pdfUrl;$('pdfDownloadLink').setAttribute('download',filename);
+     $('pdfOverlay').hidden=false;
    })
    .catch(function(er){$(errId).textContent=ERR[er.message]||ERR.server;$(errId).hidden=false})
    .then(function(){btn.disabled=false});
 }
-$('dlBadges').onclick=function(){downloadPdf('badges','badges-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlBadges'),'badgesErr')};
-$('dlFeuillet').onclick=function(){downloadPdf('feuillet','feuillet-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlFeuillet'),'feuilletErr')};
+$('dlBadges').onclick=function(){previewPdf('badges','badges-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlBadges'),'badgesErr','Badges participants')};
+$('dlFeuillet').onclick=function(){previewPdf('feuillet','feuillet-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlFeuillet'),'feuilletErr','Feuillet d’accueil')};
+$('pdfClose').onclick=function(){$('pdfOverlay').hidden=true;$('pdfFrame').src='about:blank'};
 
 /* Séances */
 function renderSessions(){

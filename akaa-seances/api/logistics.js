@@ -1,17 +1,17 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import qrcodeGen from 'qrcode-generator';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   json, fail, readBody, requireAdmin, httpError,
   getCohort, getCourse, listSessions, listEnrollments, issueBadgeToken,
 } from './_lib.js';
+import { LOGO_WHITE, QRT_ANTHRACITE, QRT_BLANC } from './assets.js';
 
 /* Génère en PDF, à la demande, les badges (A6, QR de présence personnel) et le
-   feuillet d'accueil (A4) d'une cohorte — téléchargés depuis l'onglet Logistique. */
+   feuillet d'accueil (A4) d'une cohorte — téléchargés depuis l'onglet Logistique.
+   Logos en base64 (assets.js) plutôt que lus depuis public/ : rien ne garantit
+   que ce dossier soit inclus dans le bundle de la fonction au runtime. */
 const mm = 72 / 25.4;
-const PUBLIC_DIR = join(process.cwd(), 'public');
-const loadPng = (name) => readFileSync(join(PUBLIC_DIR, name));
+const loadPng = (b64) => Buffer.from(b64, 'base64');
 
 const BLUE = rgb(0x0b / 255, 0x63 / 255, 0xff / 255);
 const BLUE_INK = rgb(0x1b / 255, 0x4f / 255, 0xc8 / 255);
@@ -103,8 +103,8 @@ async function badgesPdf(b, origin) {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const akaaLogo = await pdfDoc.embedPng(loadPng('logo-white.png'));
-  const qrtLogo = await pdfDoc.embedPng(loadPng('quarantrois-horizontal-anthracite.png'));
+  const akaaLogo = await pdfDoc.embedPng(loadPng(LOGO_WHITE));
+  const qrtLogo = await pdfDoc.embedPng(loadPng(QRT_ANTHRACITE));
 
   const PAGE_W = 210 * mm, PAGE_H = 297 * mm;
   const QUAD_W = PAGE_W / 2, QUAD_H = PAGE_H / 2;
@@ -186,8 +186,8 @@ async function feuilletPdf(b, origin) {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const akaaLogo = await pdfDoc.embedPng(loadPng('logo-white.png'));
-  const qrtLogo = await pdfDoc.embedPng(loadPng('quarantrois-horizontal-blanc.png'));
+  const akaaLogo = await pdfDoc.embedPng(loadPng(LOGO_WHITE));
+  const qrtLogo = await pdfDoc.embedPng(loadPng(QRT_BLANC));
 
   for (const enr of active) {
     drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, origin, enr);
