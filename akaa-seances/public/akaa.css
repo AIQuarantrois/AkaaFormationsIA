@@ -24,6 +24,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* En-tête de page */
 .topbar{padding-block:calc(env(safe-area-inset-top,0px) + 22px) 8px}
 .topbar img{height:40px;width:auto;display:block}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.partner{display:flex;align-items:center;gap:7px}
+.partner span{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.partner img{height:20px;width:auto;display:block}
 .eyebrow,.label{font-family:var(--mono);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-ink);font-weight:500}
 .eyebrow{display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--teal);flex:0 0 auto}

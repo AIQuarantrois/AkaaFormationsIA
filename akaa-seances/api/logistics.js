@@ -76,7 +76,7 @@ export async function POST(request) {
     await requireAdmin(request);
     const origin = new URL(request.url).origin;
     if (b.action === 'badges') return await badgesPdf(b, origin);
-    if (b.action === 'feuillet') return await feuilletPdf(b, origin);
+    if (b.action === 'feuillet') return await feuilletPdf(b);
     throw httpError(400, 'action');
   } catch (e) {
     return fail(e);
@@ -147,7 +147,10 @@ async function drawBadge(page, font, fontBold, akaaLogo, qrtLogo, ox, oy, W, H, 
 
   const courseLines = wrapText(font, 10, (course ? course.title : cohort.name), usableW).slice(0, 2);
   courseLines.forEach((ln, i) => page.drawText(ln, { x: ox + pad, y: y - i * 4.4 * mm, size: 10, font, color: INK }));
-  y -= courseLines.length * 4.4 * mm + 4.5 * mm;
+  y -= courseLines.length * 4.4 * mm + 3.2 * mm;
+
+  page.drawText('learn.akaa.app', { x: ox + pad, y, size: 7.5, font, color: BLUE_INK });
+  y -= 5.3 * mm;
 
   page.drawLine({ start: { x: ox + pad, y }, end: { x: ox + W - pad, y }, thickness: 0.7, color: LINE });
   y -= 5.5 * mm;
@@ -174,7 +177,7 @@ async function drawBadge(page, font, fontBold, akaaLogo, qrtLogo, ox, oy, W, H, 
 /* ---- feuillet d'accueil (A4, une page personnalisée par inscrit) ---- */
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 
-async function feuilletPdf(b, origin) {
+async function feuilletPdf(b) {
   const cohort = await getCohort(b.cohortId);
   if (!cohort) throw httpError(400, 'cohort');
   const [course, sessions, enrollments] = await Promise.all([
@@ -190,14 +193,14 @@ async function feuilletPdf(b, origin) {
   const qrtLogo = await pdfDoc.embedPng(loadPng(QRT_BLANC));
 
   for (const enr of active) {
-    drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, origin, enr);
+    drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, enr);
   }
 
   const bytes = await pdfDoc.save();
   return pdfResponse(bytes, `feuillet-${cohort.slug}.pdf`);
 }
 
-function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, origin, enr) {
+function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, course, sessions, enr) {
   const PAGE_W = 210 * mm, PAGE_H = 297 * mm;
   const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   const margin = 18 * mm, contentW = PAGE_W - 2 * margin;
@@ -221,7 +224,7 @@ function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, cou
   const welcome = `Nous sommes ravis de t'accueillir à ${title}. Cette journée est pensée pour comprendre, expérimenter et appliquer l'IA concrètement — pas de théorie pour la théorie.`;
   const welcomeLines = wrapText(font, 11, welcome, contentW);
   welcomeLines.forEach((ln, i) => page.drawText(ln, { x: margin, y: y - i * 5.5 * mm, size: 11, font, color: BODY }));
-  y -= welcomeLines.length * 5.5 * mm + 8 * mm;
+  y -= welcomeLines.length * 5.5 * mm + 14 * mm;
 
   page.drawText('PROGRAMME', { x: margin, y, size: 9, font: fontBold, color: BLUE_INK });
   y -= 9 * mm;
@@ -237,31 +240,27 @@ function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, cou
     const sub = i === sessions.length - 1 && sessions.length > 1 ? 'Avis global sur la formation' : 'Présence + avis sur la séance';
     page.drawText(sub, { x: cx + 6 * mm, y: y - 22.5 * mm, size: 7.5, font, color: BLUE_INK });
   });
-  y -= cardH + 10 * mm;
+  y -= cardH + 18 * mm;
 
   page.drawText('INFOS PRATIQUES', { x: margin, y, size: 9, font: fontBold, color: BLUE_INK });
-  y -= 9 * mm;
+  y -= 10 * mm;
   page.drawText('Lieu', { x: margin, y, size: 11, font: fontBold, color: INK });
   page.drawText(cohort.location || '', { x: margin + 28 * mm, y, size: 11, font, color: BODY });
-  y -= 10 * mm;
+  y -= 9 * mm;
+  page.drawText('Site', { x: margin, y, size: 11, font: fontBold, color: INK });
+  page.drawText('learn.akaa.app', { x: margin + 28 * mm, y, size: 11, font, color: BLUE_INK });
+  y -= 16 * mm;
 
-  const noteH = 15 * mm;
+  const noteH = 19 * mm;
   roundRect(page, margin, y - noteH, contentW, noteH, NOTE_BG);
-  page.drawText('WIFI', { x: margin + 7 * mm, y: y - 6.5 * mm, size: 9, font: fontBold, color: NOTE_INK });
-  page.drawText('Demander le code wifi au formateur sur place.', { x: margin + 28 * mm, y: y - 6.5 * mm, size: 10, font, color: NOTE_INK });
-  y -= noteH + 12 * mm;
+  page.drawText('WIFI', { x: margin + 7 * mm, y: y - 8 * mm, size: 9.5, font: fontBold, color: NOTE_INK });
+  page.drawText('Demander le code wifi au formateur sur place.', { x: margin + 28 * mm, y: y - 8 * mm, size: 10.5, font, color: NOTE_INK });
+  y -= noteH + 16 * mm;
 
-  const noteH2 = 15 * mm;
+  const noteH2 = 19 * mm;
   roundRect(page, margin, y - noteH2, contentW, noteH2, BLUE_SOFT);
-  page.drawText('À NE PAS OUBLIER', { x: margin + 7 * mm, y: y - 6.5 * mm, size: 9, font: fontBold, color: BLUE_INK });
-  page.drawText('Remplis ta fiche de présence et donne ton avis sur la séance, depuis le lien ci-dessous.', { x: margin + 7 * mm, y: y - 11.5 * mm, size: 9, font, color: INK });
-  y -= noteH2 + 12 * mm;
-
-  const qrSize = 26 * mm;
-  const presenceUrl = `${origin}/?c=${cohort.slug}`;
-  drawQr(page, presenceUrl, margin, y - qrSize, qrSize, INK);
-  page.drawText('Fiche de présence en ligne', { x: margin + qrSize + 8 * mm, y: y - 8 * mm, size: 10.5, font: fontBold, color: INK });
-  page.drawText(presenceUrl, { x: margin + qrSize + 8 * mm, y: y - 14 * mm, size: 8, font, color: BLUE_INK });
+  page.drawText('À NE PAS OUBLIER', { x: margin + 7 * mm, y: y - 7.5 * mm, size: 9.5, font: fontBold, color: BLUE_INK });
+  page.drawText('Scanne le QR code sur ton badge pour marquer ta présence et donner ton avis sur la séance.', { x: margin + 7 * mm, y: y - 13.5 * mm, size: 10, font, color: INK });
 
   const footY = 20 * mm;
   page.drawLine({ start: { x: margin, y: footY + 6 * mm }, end: { x: PAGE_W - margin, y: footY + 6 * mm }, thickness: 0.8, color: LINE });
