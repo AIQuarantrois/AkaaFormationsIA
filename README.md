@@ -15,4 +15,4 @@ Akaa organise des formations en présentiel et en ligne autour de l'intelligence
 
 ## Outils associés
 
-- [`akaa-seances/`](./akaa-seances) : mini-site utilisé pendant les séances en présentiel pour la fiche de présence et le recueil d'avis des participants, avec un espace organisateur dédié (suivi de présence, retours, génération de reçus). Déployé comme projet Vercel séparé — voir `akaa-seances/LISEZMOI.txt` pour la mise en service.
+- [`akaa-seances/`](./akaa-seances) : plateforme de gestion opérationnelle des formations (cours, cohortes, séances) — inscription, présence, avis, paiements saisis manuellement et avantages (newsletter, certificat) après la formation, avec un backoffice dédié pour les organisateurs. Le contenu pédagogique reste géré sur [learn.akaa.app](https://learn.akaa.app/) ; cet outil ne couvre que la logistique du parcours participant. Déployé comme projet Vercel séparé — voir `akaa-seances/LISEZMOI.txt` pour la mise en service.

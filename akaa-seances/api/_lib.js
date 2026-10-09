@@ -1,10 +1,9 @@
 import { put, list, get, del } from '@vercel/blob';
 import { timingSafeEqual, randomInt, randomBytes, scryptSync, createHmac } from 'node:crypto';
 
-export const SESSIONS = { s1: '2026-10-10', s2: '2026-10-17' };
 export const MODES = ['Espèces', 'Mvola', 'Orange Money', 'Airtel Money'];
 export const KINDS = ['Paiement intégral', 'Acompte', 'Solde'];
-export const OBJET = 'Formation « Reprendre la main sur l’IA » · séances des 10 et 17 oct. 2026';
+export const COHORT_STATUSES = ['brouillon', 'ouverte', 'terminee', 'annulee'];
 
 export const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -20,7 +19,6 @@ export function fail(e) {
 }
 
 export const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Indian/Antananarivo' }).format(new Date());
-export const currentSession = () => (today() >= SESSIONS.s2 ? 's2' : 's1');
 
 export function normPhone(p) {
   let d = String(p == null ? '' : p).replace(/\D/g, '');
@@ -47,25 +45,59 @@ export async function readBody(request) {
   }
 }
 
-/* Code de séance : généré automatiquement au premier accès, puis stocké (un par séance). */
-export async function getSessionCode(sid) {
-  const path = `c/${sid}.json`;
-  const [existing] = await readAll(path);
-  if (existing && existing.code) return existing.code;
-  const code = String(randomInt(1000, 10000));
-  try {
-    await putJson(path, { code }, false);
-    return code;
-  } catch (e) {
-    if (!alreadyExists(e)) throw e;
-    const [retry] = await readAll(path);
-    return (retry && retry.code) || code;
-  }
+function newId() {
+  return Date.now().toString(36) + randomBytes(4).toString('hex');
 }
 
-export async function checkCode(code, sid) {
-  const expected = await getSessionCode(sid);
-  if (clean(code, 20) !== expected) throw httpError(403, 'code');
+function slugify(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+/* ---- stockage : un fichier JSON privé par enregistrement ---- */
+export async function putJson(pathname, data, overwrite = true) {
+  return put(pathname, JSON.stringify(data), {
+    access: 'private',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    allowOverwrite: overwrite,
+  });
+}
+export const alreadyExists = (e) => /exist/i.test(String((e && e.message) || e));
+
+async function listAll(prefix) {
+  let cursor;
+  const out = [];
+  do {
+    const r = await list({ prefix, cursor, limit: 1000 });
+    out.push(...r.blobs);
+    cursor = r.hasMore ? r.cursor : undefined;
+  } while (cursor);
+  return out;
+}
+async function readBlob(blob) {
+  const r = await get(blob.url, { access: 'private' });
+  if (!r || !r.stream) return null;
+  try {
+    return await new Response(r.stream).json();
+  } catch {
+    return null;
+  }
+}
+export async function readAll(prefix) {
+  const blobs = await listAll(prefix);
+  const items = await Promise.all(blobs.map(readBlob));
+  return items.filter(Boolean);
+}
+export async function removeBlob(pathname) {
+  const blobs = await listAll(pathname);
+  const hit = blobs.find((b) => b.pathname === pathname);
+  if (hit) await del(hit.url);
+  return !!hit;
 }
 
 /* ---- authentification admin : un compte par organisateur ---- */
@@ -116,8 +148,6 @@ export async function createUser(username, password, createdBy) {
   return { username: u };
 }
 
-/* Clé de signature des jetons de session : générée une fois, stockée dans le Blob
-   (indépendante de tout mot de passe, pour que changer un compte n'invalide pas les autres). */
 let cachedSigningKey = null;
 async function signingKey() {
   if (cachedSigningKey) return cachedSigningKey;
@@ -161,7 +191,6 @@ async function verifyToken(token) {
   }
 }
 
-/* Retourne le nom d'utilisateur authentifié, pour l'historisation des actions. */
 export async function requireAdmin(request) {
   const token = request.headers.get('x-admin-token') || '';
   const username = await verifyToken(token);
@@ -176,68 +205,289 @@ export async function logAction(by, action, summary) {
   await putJson(`log/${id}.json`, { at: new Date().toISOString(), by, action, summary: summary || '' }, false);
 }
 
-/* ---- stockage : un fichier JSON privé par enregistrement ---- */
-export async function putJson(pathname, data, overwrite = true) {
-  return put(pathname, JSON.stringify(data), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: overwrite,
-  });
+/* ---- mentions légales globales (NIF, STAT, adresse), pour les reçus ---- */
+export async function getSettings() {
+  const [rec] = await readAll('m/settings.json');
+  return rec || {};
 }
-export const alreadyExists = (e) => /exist/i.test(String((e && e.message) || e));
+export async function saveSettingsRecord(d, by) {
+  const s = { nif: clean(d.nif, 40), stat: clean(d.stat, 60), address: clean(d.address, 160), updatedBy: by };
+  await putJson('m/settings.json', s, true);
+  return s;
+}
 
-async function listAll(prefix) {
-  let cursor;
-  const out = [];
-  do {
-    const r = await list({ prefix, cursor, limit: 1000 });
-    out.push(...r.blobs);
-    cursor = r.hasMore ? r.cursor : undefined;
-  } while (cursor);
-  return out;
+/* ---- cours : le programme réutilisable d'une formation (le contenu pédagogique
+   lui-même reste géré sur le site Akaa ; ici on ne garde qu'un titre et un résumé) ---- */
+export async function listCourses() {
+  const all = await readAll('course/');
+  return all.sort((a, b) => a.title.localeCompare(b.title));
 }
-async function readBlob(blob) {
-  const r = await get(blob.url, { access: 'private' });
-  if (!r || !r.stream) return null;
+export async function getCourse(id) {
+  const [rec] = await readAll(`course/${clean(id, 40)}.json`);
+  return rec || null;
+}
+export async function createCourse(d, by) {
+  const title = clean(d.title, 120);
+  if (title.length < 2) throw httpError(400, 'title');
+  const id = newId();
+  const rec = {
+    id, title, summary: clean(d.summary, 300), location: clean(d.location, 160),
+    archived: false, createdAt: new Date().toISOString(), createdBy: by,
+  };
+  await putJson(`course/${id}.json`, rec, false);
+  return rec;
+}
+export async function updateCourse(id, d, by) {
+  const cur = await getCourse(id);
+  if (!cur) throw httpError(404, 'course');
+  const next = {
+    ...cur,
+    title: d.title != null ? clean(d.title, 120) : cur.title,
+    summary: d.summary != null ? clean(d.summary, 300) : cur.summary,
+    location: d.location != null ? clean(d.location, 160) : cur.location,
+    archived: d.archived != null ? !!d.archived : cur.archived,
+    updatedAt: new Date().toISOString(), updatedBy: by,
+  };
+  await putJson(`course/${id}.json`, next, true);
+  return next;
+}
+
+/* ---- cohortes : une édition programmée d'un cours, avec ses dates, son lieu,
+   son tarif et ses inscrits ---- */
+export async function listCohorts(courseId) {
+  const all = await readAll('cohort/');
+  const filtered = courseId ? all.filter((c) => c.courseId === courseId) : all;
+  return filtered.sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')));
+}
+export async function getCohort(id) {
+  const [rec] = await readAll(`cohort/${clean(id, 40)}.json`);
+  return rec || null;
+}
+export async function getCohortBySlug(slug) {
+  const s = slugify(slug);
+  if (!s) return null;
+  const all = await listCohorts();
+  return all.find((c) => c.slug === s) || null;
+}
+export async function createCohort(d, by) {
+  const course = await getCourse(d.courseId);
+  if (!course) throw httpError(400, 'course');
+  const name = clean(d.name, 80);
+  if (name.length < 2) throw httpError(400, 'name');
+  let slug = slugify(d.slug || name) || newId();
+  if (await getCohortBySlug(slug)) slug = `${slug}-${randomBytes(2).toString('hex')}`;
+  const id = newId();
+  const rec = {
+    id, courseId: course.id, name, slug,
+    status: COHORT_STATUSES.includes(d.status) ? d.status : 'brouillon',
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(d.startDate || '') ? d.startDate : '',
+    endDate: /^\d{4}-\d{2}-\d{2}$/.test(d.endDate || '') ? d.endDate : '',
+    location: clean(d.location, 160) || course.location,
+    link: clean(d.link, 300),
+    price: Math.max(0, Math.round(Number(d.price) || 0)),
+    currency: clean(d.currency, 10) || 'Ar',
+    capacity: Number(d.capacity) > 0 ? Math.round(Number(d.capacity)) : null,
+    createdAt: new Date().toISOString(), createdBy: by,
+  };
+  await putJson(`cohort/${id}.json`, rec, false);
+  return rec;
+}
+export async function updateCohort(id, d, by) {
+  const cur = await getCohort(id);
+  if (!cur) throw httpError(404, 'cohort');
+  const next = { ...cur };
+  if (d.name != null) next.name = clean(d.name, 80);
+  if (d.status != null && COHORT_STATUSES.includes(d.status)) next.status = d.status;
+  if (d.startDate != null) next.startDate = /^\d{4}-\d{2}-\d{2}$/.test(d.startDate) ? d.startDate : cur.startDate;
+  if (d.endDate != null) next.endDate = /^\d{4}-\d{2}-\d{2}$/.test(d.endDate) ? d.endDate : cur.endDate;
+  if (d.location != null) next.location = clean(d.location, 160);
+  if (d.link != null) next.link = clean(d.link, 300);
+  if (d.price != null) next.price = Math.max(0, Math.round(Number(d.price) || 0));
+  if (d.currency != null) next.currency = clean(d.currency, 10) || 'Ar';
+  if (d.capacity != null) next.capacity = Number(d.capacity) > 0 ? Math.round(Number(d.capacity)) : null;
+  next.updatedAt = new Date().toISOString(); next.updatedBy = by;
+  await putJson(`cohort/${id}.json`, next, true);
+  return next;
+}
+
+/* ---- séances : les rencontres d'une cohorte ---- */
+export async function listSessions(cohortId) {
+  const all = await readAll(`session/${clean(cohortId, 40)}/`);
+  return all.sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+}
+export async function getSession(cohortId, id) {
+  const [rec] = await readAll(`session/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
+  return rec || null;
+}
+export async function createSession(cohortId, d, by) {
+  const cohort = await getCohort(cohortId);
+  if (!cohort) throw httpError(400, 'cohort');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) throw httpError(400, 'date');
+  const siblings = await listSessions(cohortId);
+  const id = newId();
+  const rec = {
+    id, cohortId, index: siblings.length + 1, date: d.date,
+    start: clean(d.start, 10), end: clean(d.end, 10),
+    location: clean(d.location, 160) || cohort.location,
+    topic: clean(d.topic, 160),
+    createdAt: new Date().toISOString(), createdBy: by,
+  };
+  await putJson(`session/${cohortId}/${id}.json`, rec, false);
+  return rec;
+}
+export async function updateSession(cohortId, id, d, by) {
+  const cur = await getSession(cohortId, id);
+  if (!cur) throw httpError(404, 'session');
+  const next = { ...cur };
+  if (d.date != null && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) next.date = d.date;
+  if (d.start != null) next.start = clean(d.start, 10);
+  if (d.end != null) next.end = clean(d.end, 10);
+  if (d.location != null) next.location = clean(d.location, 160);
+  if (d.topic != null) next.topic = clean(d.topic, 160);
+  next.updatedAt = new Date().toISOString(); next.updatedBy = by;
+  await putJson(`session/${cohortId}/${id}.json`, next, true);
+  return next;
+}
+export async function removeSession(cohortId, id) {
+  return removeBlob(`session/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
+}
+
+export function pickCurrentSession(sessions) {
+  if (!sessions.length) return null;
+  const t = today();
+  const sorted = sessions.slice().sort((a, b) => a.date.localeCompare(b.date));
+  return sorted.find((s) => s.date === t) || sorted.find((s) => s.date > t) || sorted[sorted.length - 1];
+}
+
+/* ---- code de séance : généré automatiquement au premier accès, un par séance ---- */
+export async function getSessionCode(sessionId) {
+  const path = `code/${sessionId}.json`;
+  const [existing] = await readAll(path);
+  if (existing && existing.code) return existing.code;
+  const code = String(randomInt(1000, 10000));
   try {
-    return await new Response(r.stream).json();
-  } catch {
-    return null;
+    await putJson(path, { code }, false);
+    return code;
+  } catch (e) {
+    if (!alreadyExists(e)) throw e;
+    const [retry] = await readAll(path);
+    return (retry && retry.code) || code;
   }
 }
-export async function readAll(prefix) {
-  const blobs = await listAll(prefix);
-  const items = await Promise.all(blobs.map(readBlob));
-  return items.filter(Boolean);
-}
-export async function removeBlob(pathname) {
-  const blobs = await listAll(pathname);
-  const hit = blobs.find((b) => b.pathname === pathname);
-  if (hit) await del(hit.url);
-  return !!hit;
+export async function checkCode(code, sessionId) {
+  const expected = await getSessionCode(sessionId);
+  if (clean(code, 20) !== expected) throw httpError(403, 'code');
 }
 
-/* ---- présence ---- */
-export async function recordPresence(sid, d) {
-  if (!SESSIONS[sid]) throw httpError(400, 'session');
+/* ---- inscriptions : un participant rattaché à une cohorte ---- */
+export async function listEnrollments(cohortId) {
+  const all = await readAll(`enr/${clean(cohortId, 40)}/`);
+  return all.sort((a, b) => a.name.localeCompare(b.name));
+}
+export async function getEnrollment(cohortId, id) {
+  const [rec] = await readAll(`enr/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
+  return rec || null;
+}
+export async function findEnrollmentByPhone(cohortId, phone) {
+  const all = await listEnrollments(cohortId);
+  return all.find((e) => e.phone === phone) || null;
+}
+export async function createEnrollment(cohortId, d, by, source) {
+  const cohort = await getCohort(cohortId);
+  if (!cohort) throw httpError(400, 'cohort');
   const name = clean(d.name, 80);
   const phone = normPhone(d.phone);
   if (name.length < 2) throw httpError(400, 'name');
   if (!phone) throw httpError(400, 'phone');
+  if (await findEnrollmentByPhone(cohortId, phone)) throw httpError(409, 'already_enrolled');
+  const id = newId();
   const rec = {
-    sid,
-    name,
-    phone,
-    email: clean(d.email, 120),
-    company: clean(d.company, 120),
-    at: new Date().toISOString(),
+    id, cohortId, name, phone,
+    email: clean(d.email, 120), company: clean(d.company, 120),
+    status: 'inscrit', newsletter: !!d.newsletter, completed: false, completedAt: null,
+    source: source || 'manuel', enrolledAt: new Date().toISOString(), enrolledBy: by,
+  };
+  await putJson(`enr/${cohortId}/${id}.json`, rec, false);
+  return rec;
+}
+export async function updateEnrollment(cohortId, id, d, by) {
+  const cur = await getEnrollment(cohortId, id);
+  if (!cur) throw httpError(404, 'enrollment');
+  const next = { ...cur };
+  if (d.name != null) next.name = clean(d.name, 80);
+  if (d.email != null) next.email = clean(d.email, 120);
+  if (d.company != null) next.company = clean(d.company, 120);
+  if (d.status != null) next.status = d.status === 'annule' ? 'annule' : 'inscrit';
+  if (d.newsletter != null) next.newsletter = !!d.newsletter;
+  if (d.completed != null) {
+    next.completed = !!d.completed;
+    next.completedAt = next.completed ? (cur.completedAt || new Date().toISOString()) : null;
+  }
+  next.updatedAt = new Date().toISOString(); next.updatedBy = by;
+  await putJson(`enr/${cohortId}/${id}.json`, next, true);
+  return next;
+}
+export async function removeEnrollment(cohortId, id) {
+  return removeBlob(`enr/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
+}
+export async function listNewsletterOptins() {
+  const all = await readAll('enr/');
+  return all.filter((e) => e.newsletter && e.status !== 'annule')
+    .map((e) => ({ name: e.name, phone: e.phone, email: e.email, cohortId: e.cohortId }));
+}
+
+/* ---- présence : un enregistrement par séance et par participant ---- */
+export async function recordAttendance(cohort, session, d, by, source) {
+  const name = clean(d.name, 80);
+  const phone = normPhone(d.phone);
+  if (name.length < 2) throw httpError(400, 'name');
+  if (!phone) throw httpError(400, 'phone');
+  let enr = await findEnrollmentByPhone(cohort.id, phone);
+  if (!enr) enr = await createEnrollment(cohort.id, { name, phone, email: d.email, company: d.company }, by, source || 'checkin');
+  const rec = {
+    sessionId: session.id, cohortId: cohort.id, enrollmentId: enr.id,
+    name: enr.name, phone, email: enr.email, company: enr.company, at: new Date().toISOString(),
   };
   try {
-    await putJson(`p/${sid}/${phone}.json`, rec, false);
+    await putJson(`att/${session.id}/${phone}.json`, rec, false);
     return { rec, already: false };
   } catch (e) {
     if (alreadyExists(e)) return { rec, already: true };
     throw e;
   }
+}
+export async function listAttendance(sessionId) {
+  return readAll(`att/${clean(sessionId, 40)}/`);
+}
+export async function removeAttendance(sessionId, phone) {
+  return removeBlob(`att/${clean(sessionId, 40)}/${clean(phone, 20)}.json`);
+}
+
+/* ---- avis : un par séance et par participant ---- */
+export async function recordFeedback(cohort, session, d) {
+  const name = clean(d.name, 80);
+  const phone = normPhone(d.phone);
+  const score = Number(d.score);
+  const recommend = ['oui', 'peut-etre', 'non'].includes(d.recommend) ? d.recommend : '';
+  if (name.length < 2) throw httpError(400, 'name');
+  if (!phone) throw httpError(400, 'phone');
+  if (!Number.isInteger(score) || score < 1 || score > 10) throw httpError(400, 'score');
+  if (!recommend) throw httpError(400, 'recommend');
+  const rec = {
+    sessionId: session.id, cohortId: cohort.id, name, phone, score,
+    helped: cleanLong(d.helped), missing: cleanLong(d.missing), recommend,
+    next: clean(d.next, 300), quote: cleanLong(d.quote, 800),
+    consentCite: d.consentCite === true, consentContact: d.consentContact === true,
+    at: new Date().toISOString(),
+  };
+  await putJson(`fb/${session.id}/${phone}.json`, rec, true);
+  return rec;
+}
+export async function listFeedback(sessionId) {
+  return readAll(`fb/${clean(sessionId, 40)}/`);
+}
+
+/* ---- reçus de paiement : liés à une cohorte et, si connue, à une inscription ---- */
+export async function listReceipts(cohortId) {
+  return readAll(cohortId ? `r/${clean(cohortId, 40)}/` : 'r/');
 }

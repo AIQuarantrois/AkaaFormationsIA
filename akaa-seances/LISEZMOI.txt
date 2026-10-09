@@ -1,19 +1,38 @@
-Akaa Séances : présence, avis et reçus (site Vercel)
+Akaa Séances : plateforme de gestion des cours/cohortes (site Vercel)
 
-1. Créer un projet Vercel nommé akaa-seances (importer ce dossier depuis GitHub, ou : vercel deploy dans ce dossier).
+Modèle : Cours (programme réutilisable) → Cohortes (éditions programmées, avec dates,
+lieu, tarif) → Séances. Chaque cohorte a ses inscrits, ses présences et avis par
+séance, ses reçus de paiement (saisis manuellement, pas d'API de paiement pour
+l'instant), et des « avantages » (newsletter, certificat) une fois complétée.
+Le contenu pédagogique des formations reste géré sur le site Akaa (learn.akaa.app) :
+cet outil ne gère que la logistique.
+
+1. Créer un projet Vercel nommé akaa-seances (importer ce dossier depuis GitHub, ou :
+   vercel deploy dans ce dossier).
 2. Storage > Create > Blob, accès PRIVÉ, connecté au projet (ajoute BLOB_READ_WRITE_TOKEN).
 3. Aucune variable d'environnement à configurer.
-4. Redéployer. Participants : /   Organisateur : /admin
+4. Redéployer.
 
-Comptes organisateurs : à la toute première ouverture de /admin, l'écran propose de
-créer le premier compte (identifiant + mot de passe, choisis par vous). Une fois
-connecté, l'onglet « Équipe » permet d'inviter d'autres organisateurs (chacun son
-compte). Chaque session de connexion reste valable 12h sur l'appareil utilisé ; passé
-ce délai, ou sur un nouvel appareil, il faut se reconnecter avec son identifiant et
-son mot de passe. Toutes les actions (ajout/retrait de présence, émission/annulation
-de reçu, ajout d'organisateur) sont historisées et consultables dans l'onglet
-« Équipe » (qui, quoi, quand).
+Participants : /?c=<identifiant-de-cohorte> (le lien complet et le QR sont affichés
+dans /admin, pour la séance en cours). Sans identifiant, la page essaie de deviner la
+bonne cohorte (la seule ouverte, ou celle dont une séance tombe aujourd'hui) — pratique
+tant qu'une seule cohorte est active, mais le lien avec ?c= reste le plus fiable dès
+qu'il y en a plusieurs.
 
-Le code de séance (4 chiffres, pour les participants) n'est pas à configurer : il est
-généré automatiquement à la première consultation de /admin pour chaque séance, et
-affiché là pour l'organisateur — il n'y a qu'à le lire et l'annoncer dans la salle.
+Organisateur : /admin. À la toute première ouverture, l'écran propose de créer le
+premier compte (identifiant + mot de passe, choisis par vous) ; ensuite, chaque
+organisateur a son propre compte (onglet Équipe, qui peut en inviter d'autres). Chaque
+session de connexion reste valable 12h sur l'appareil utilisé. Toutes les actions
+(cours, cohortes, séances, inscrits, présences, paiements) sont historisées avec qui
+les a faites, consultable dans Équipe.
+
+Parcours dans le backoffice : Cours → Cohortes → une cohorte, avec les onglets
+Séances / Inscrits / Présences / Avis / Paiements / Avantages. Le code à 4 chiffres
+affiché dans la salle est généré automatiquement par séance (visible en haut de la
+page cohorte et dans chaque ligne de l'onglet Séances).
+
+Migration depuis l'ancienne version (présence/avis fixes, 10 et 17 oct.) : les
+anciennes données de test ne sont pas reprises automatiquement. Avant la séance,
+créer dans /admin : un Cours (« Reprendre la main sur l'IA »), une Cohorte (dates,
+lieu, tarif), puis ses Séances (10 et 17 octobre). Le lien /?c=<slug-de-la-cohorte>
+remplace l'ancien lien /.

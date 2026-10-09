@@ -16,11 +16,23 @@
 
 <main class="page">
   <div class="wrap stack" style="gap:16px">
+
+    <div id="loading" class="stack" style="gap:14px;padding-block:12px 6px">
+      <p class="muted">Chargement…</p>
+    </div>
+
+    <div id="notfound" class="stack" style="gap:14px;padding-block:12px 6px" hidden>
+      <div class="eyebrow">Akaa</div>
+      <h1 class="display" style="font-size:2rem">Aucune séance à afficher.</h1>
+      <p class="lead">Ce lien n’est pas (ou plus) valide. Demande le bon lien à l’organisateur.</p>
+    </div>
+
+    <div id="content" class="stack" style="gap:16px" hidden>
     <div class="stack" style="gap:14px;padding-block:12px 6px">
-      <div class="eyebrow" id="eyebrow">Formation · Séance 1</div>
-      <h1 class="display">Reprendre la main sur l’IA.</h1>
+      <div class="eyebrow" id="eyebrow">Formation</div>
+      <h1 class="display" id="title">Reprendre la main sur l’IA.</h1>
       <p class="lead">Ta fiche de présence et ton avis sur la séance, depuis ton téléphone.</p>
-      <div class="meta"><span id="sessDate">Samedi 10 octobre 2026</span><span>9h30 – 12h00</span><span>Koon Space, Ambatonakanga</span></div>
+      <div class="meta" id="meta"></div>
     </div>
 
     <div class="tabs" role="tablist" aria-label="Choisir">
@@ -95,6 +107,7 @@
         <p class="muted">Ton avis est bien enregistré. À très vite pour la suite.</p>
       </div>
     </section>
+    </div>
 
     <p class="foot">Comprendre. Expérimenter. Appliquer.<br>Akaa, en partenariat avec Quarantrois · © 2026</p>
   </div>
@@ -104,13 +117,37 @@
 (function(){
 'use strict';
 var $=function(i){return document.getElementById(i)};
-var KEY='akaa_participant';
+var SLUG=null;
 
-/* Séance du jour (le serveur décide aussi, avec la même règle) */
-var d=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Antananarivo'}).format(new Date());
-var second=d>='2026-10-17';
-$('eyebrow').textContent='Formation · Séance '+(second?'2':'1');
-$('sessDate').textContent=second?'Samedi 17 octobre 2026':'Samedi 10 octobre 2026';
+function fmtDateLong(iso){
+  try{
+    var s=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Indian/Antananarivo'}).format(new Date(iso+'T00:00:00Z'));
+    return s.charAt(0).toUpperCase()+s.slice(1);
+  }catch(e){return iso}
+}
+
+function post(url,data){
+  return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data||{})})
+    .catch(function(){throw new Error('network')})
+    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||'server');return j})});
+}
+
+var qs=new URLSearchParams(location.search);
+post('/api/public',{cohort:qs.get('c')||undefined}).then(function(j){
+  if(!j.ok||!j.session){$('loading').hidden=true;$('notfound').hidden=false;return}
+  SLUG=j.cohort.slug;
+  $('eyebrow').textContent='Formation · Séance '+j.session.index+(j.session.total>1?'/'+j.session.total:'');
+  $('title').textContent=(j.course&&j.course.title)||j.cohort.name;
+  var meta=[fmtDateLong(j.session.date)];
+  if(j.session.start)meta.push(j.session.start+(j.session.end?' – '+j.session.end:''));
+  if(j.session.location)meta.push(j.session.location);
+  $('meta').innerHTML=meta.map(function(m){return '<span>'+m.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})+'</span>'}).join('');
+  $('loading').hidden=true;$('content').hidden=false;
+  boot();
+}).catch(function(){$('loading').hidden=true;$('notfound').hidden=false});
+
+function boot(){
+var KEY='akaa_participant_'+SLUG;
 
 /* Mémoire locale : évite de tout retaper entre présence et avis */
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
@@ -145,21 +182,18 @@ var MSG={
   name:'Saisis ton nom et ton prénom.',
   score:'Choisis une note de 1 à 10.',
   recommend:'Dis-nous si tu recommanderais la formation.',
+  session:'Aucune séance programmée pour le moment.',
+  cohort:'Lien invalide. Demande le bon lien à l’organisateur.',
   network:'Pas de connexion. Réessaie dans un instant.',
   server:'Une erreur est survenue. Réessaie, ou préviens l’organisateur.'
 };
-function post(url,data){
-  return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)})
-    .catch(function(){throw new Error('network')})
-    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||'server');return j})});
-}
 function showErr(id,key){var e=$(id);e.textContent=MSG[key]||MSG.server;e.hidden=false}
 function first(n){return String(n||'').trim().split(/\s+/)[0]}
 
 /* Présence */
 $('presenceForm').addEventListener('submit',function(ev){
   ev.preventDefault();$('pErr').hidden=true;
-  var data={name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value,code:$('pCode').value};
+  var data={cohort:SLUG,name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value,code:$('pCode').value};
   $('pBtn').disabled=true;
   post('/api/checkin',data).then(function(j){
     save({name:data.name,phone:data.phone,email:data.email,company:data.company,code:data.code});
@@ -176,7 +210,7 @@ $('feedbackForm').addEventListener('submit',function(ev){
   var rec=document.querySelector('input[name="rec"]:checked');
   if(!score){showErr('fErr','score');return}
   if(!rec){showErr('fErr','recommend');return}
-  var data={name:$('fName').value,phone:$('fPhone').value,code:$('fCode').value,score:score,recommend:rec.value,
+  var data={cohort:SLUG,name:$('fName').value,phone:$('fPhone').value,code:$('fCode').value,score:score,recommend:rec.value,
     helped:$('fHelped').value,missing:$('fMissing').value,next:$('fNext').value,quote:$('fQuote').value,
     consentCite:$('fCite').checked,consentContact:$('fContact').checked};
   $('fBtn').disabled=true;
@@ -186,6 +220,7 @@ $('feedbackForm').addEventListener('submit',function(ev){
     $('fFormBox').hidden=true;$('fDone').hidden=false;window.scrollTo({top:0,behavior:'smooth'});
   }).catch(function(e){showErr('fErr',e.message)}).then(function(){$('fBtn').disabled=false});
 });
+}
 })();
 </script>
 </body>
