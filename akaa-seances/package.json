@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@vercel/blob": "latest"
+    "@vercel/blob": "latest",
+    "pdf-lib": "^1.17.1",
+    "qrcode-generator": "^2.0.4"
   }
 }

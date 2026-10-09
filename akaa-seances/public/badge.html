@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F8FAFE">
+<title>Présence · Akaa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/akaa.css">
+</head>
+<body>
+<header class="topbar"><div class="wrap"><img src="/logo-blue.png" alt="Akaa" width="79" height="40"></div></header>
+
+<main class="page">
+  <div class="wrap stack" style="gap:16px">
+    <div id="loading" class="stack" style="gap:14px"><p class="muted">Chargement…</p></div>
+
+    <div id="bad" class="stack" style="gap:14px" hidden>
+      <div class="eyebrow">Akaa</div>
+      <h1 class="display" style="font-size:2rem">Badge non reconnu.</h1>
+      <p class="lead">Ce lien n'est pas valide, ou aucune séance n'est programmée pour le moment.</p>
+    </div>
+
+    <div id="ok" class="stack" style="gap:18px" hidden>
+      <div class="stack" style="gap:10px">
+        <div class="eyebrow" id="eyebrow">Confirmation de présence</div>
+        <h1 class="display" style="font-size:2.1rem" id="pname">—</h1>
+        <p class="lead" id="meta"></p>
+      </div>
+
+      <div id="pending" class="card stack" style="gap:16px" hidden>
+        <p class="muted">Tape le bouton pour confirmer ta présence à cette séance.</p>
+        <button type="button" class="btn" id="confirmBtn">Confirmer ma présence</button>
+        <div class="err" id="err" role="alert" hidden></div>
+      </div>
+
+      <div id="done" class="done" hidden>
+        <div class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h2 class="h2">Présence enregistrée</h2>
+        <p class="muted">Pense à donner ton avis sur la séance depuis la page de présence, une fois chez toi si besoin.</p>
+      </div>
+    </div>
+
+    <p class="foot">Comprendre. Expérimenter. Appliquer.<br>Akaa, en partenariat avec Quarantrois · © 2026</p>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+var $=function(i){return document.getElementById(i)};
+var qs=new URLSearchParams(location.search);
+var TOKEN=qs.get('t')||'';
+
+function post(action){
+  return fetch('/api/badge',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:TOKEN,action:action})})
+    .catch(function(){throw new Error('network')})
+    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||'server');return j})});
+}
+function render(j){
+  $('loading').hidden=true;$('ok').hidden=false;
+  $('pname').textContent=j.name;
+  $('meta').textContent=(j.course?j.course+' · ':'')+j.cohort+' · Séance '+j.session.index+(j.session.total>1?'/'+j.session.total:'');
+  if(j.already){$('pending').hidden=true;$('done').hidden=false}
+  else{$('pending').hidden=false;$('done').hidden=true}
+}
+if(!TOKEN){$('loading').hidden=true;$('bad').hidden=false}
+else{
+  post('status').then(render).catch(function(){$('loading').hidden=true;$('bad').hidden=false});
+}
+$('confirmBtn').onclick=function(){
+  $('err').hidden=true;$('confirmBtn').disabled=true;
+  post('confirm').then(render).catch(function(e){
+    $('err').textContent=e.message==='network'?'Pas de connexion. Réessaie.':'Erreur. Réessaie, ou préviens l’organisateur.';
+    $('err').hidden=false;
+  }).then(function(){$('confirmBtn').disabled=false});
+};
+})();
+</script>
+</body>
+</html>

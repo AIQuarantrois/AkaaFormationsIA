@@ -446,7 +446,21 @@ export async function listNewsletterOptins() {
     .map((e) => ({ name: e.name, phone: e.phone, email: e.email, cohortId: e.cohortId }));
 }
 
-/* ---- présence : un enregistrement par séance et par participant ---- */
+/* ---- présence : un enregistrement par séance et par inscription (clé = enrollmentId,
+   pas le téléphone, pour fonctionner même sans numéro et unifier badge-QR + auto-déclaration) ---- */
+export async function recordAttendanceByEnrollment(cohort, session, enr) {
+  const rec = {
+    sessionId: session.id, cohortId: cohort.id, enrollmentId: enr.id,
+    name: enr.name, phone: enr.phone, email: enr.email, company: enr.company, at: new Date().toISOString(),
+  };
+  try {
+    await putJson(`att/${session.id}/${enr.id}.json`, rec, false);
+    return { rec, already: false };
+  } catch (e) {
+    if (alreadyExists(e)) return { rec, already: true };
+    throw e;
+  }
+}
 export async function recordAttendance(cohort, session, d, by, source) {
   const name = clean(d.name, 80);
   const phone = normPhone(d.phone);
@@ -454,23 +468,38 @@ export async function recordAttendance(cohort, session, d, by, source) {
   if (!phone) throw httpError(400, 'phone');
   let enr = await findEnrollmentByPhone(cohort.id, phone);
   if (!enr) enr = await createEnrollment(cohort.id, { name, phone, email: d.email, company: d.company }, by, source || 'checkin');
-  const rec = {
-    sessionId: session.id, cohortId: cohort.id, enrollmentId: enr.id,
-    name: enr.name, phone, email: enr.email, company: enr.company, at: new Date().toISOString(),
-  };
-  try {
-    await putJson(`att/${session.id}/${phone}.json`, rec, false);
-    return { rec, already: false };
-  } catch (e) {
-    if (alreadyExists(e)) return { rec, already: true };
-    throw e;
-  }
+  return recordAttendanceByEnrollment(cohort, session, enr);
 }
 export async function listAttendance(sessionId) {
   return readAll(`att/${clean(sessionId, 40)}/`);
 }
-export async function removeAttendance(sessionId, phone) {
-  return removeBlob(`att/${clean(sessionId, 40)}/${clean(phone, 20)}.json`);
+export async function removeAttendance(sessionId, enrollmentId) {
+  return removeBlob(`att/${clean(sessionId, 40)}/${clean(enrollmentId, 40)}.json`);
+}
+
+/* ---- jetons de badge : liens personnels (QR) pour confirmer sa présence sans ressaisir
+   nom/téléphone/code — signés avec la même clé que les sessions admin, mais domaine séparé. ---- */
+export async function issueBadgeToken(cohortId, enrollmentId) {
+  const key = await signingKey();
+  const payload = Buffer.from(JSON.stringify({ c: cohortId, e: enrollmentId })).toString('base64url');
+  const sig = createHmac('sha256', key).update('badge:' + payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+export async function verifyBadgeToken(token) {
+  const [payload, sig] = String(token || '').split('.');
+  if (!payload || !sig) return null;
+  const key = await signingKey();
+  const expected = createHmac('sha256', key).update('badge:' + payload).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const { c, e } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (!c || !e) return null;
+    return { cohortId: c, enrollmentId: e };
+  } catch {
+    return null;
+  }
 }
 
 /* ---- avis : un par séance et par participant ---- */

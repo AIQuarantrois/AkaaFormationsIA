@@ -90,4 +90,5 @@ textarea{min-height:96px;resize:vertical}
 .pill.amber{background:var(--note);color:#9A6B00}
 .pill.bad{background:var(--bad-bg);color:var(--bad)}
 .foot{text-align:center;color:var(--muted);font-size:.82rem;padding-block:6px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:600;max-width:calc(100vw - 32px);text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

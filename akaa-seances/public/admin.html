@@ -180,6 +180,7 @@ details[open]>summary{margin-bottom:14px}
         <button type="button" role="tab" data-ctab="fb" aria-selected="false">Avis</button>
         <button type="button" role="tab" data-ctab="pay" aria-selected="false">Paiements</button>
         <button type="button" role="tab" data-ctab="perks" aria-selected="false">Avantages</button>
+        <button type="button" role="tab" data-ctab="logistics" aria-selected="false">Logistique</button>
       </div>
 
       <!-- Séances -->
@@ -229,6 +230,10 @@ details[open]>summary{margin-bottom:14px}
           <div class="progress" aria-hidden="true"><span id="attBar"></span></div>
         </div>
         <div class="card"><div id="attList" class="list"><p class="muted">Chargement…</p></div></div>
+        <div class="card stack" style="gap:10px" id="quickCard">
+          <div class="label">Pointage rapide (inscrits pas encore présents)</div>
+          <div id="quickList" class="list"></div>
+        </div>
         <details class="card">
           <summary>Ajouter une présence à la main</summary>
           <form class="form" id="attForm" novalidate>
@@ -288,6 +293,22 @@ details[open]>summary{margin-bottom:14px}
         <div class="card"><p class="small muted">Coche « Complété » une fois la formation suivie, pour débloquer le certificat. La newsletter se coche à l’inscription ou se modifie ici.</p></div>
         <div class="card"><div id="perksList" class="list"><p class="muted">Chargement…</p></div></div>
         <div id="certView" hidden></div>
+      </section>
+
+      <!-- Logistique -->
+      <section id="t-logistics" class="stack" style="gap:16px" hidden>
+        <div class="card stack" style="gap:12px">
+          <h2 class="h2" style="font-size:1.15rem">Badges participants</h2>
+          <p class="small muted">Un badge par inscrit actif (format A6, 4 par page), avec les deux séances et un QR personnel pour confirmer sa présence.</p>
+          <button type="button" class="btn" id="dlBadges">Télécharger les badges (PDF)</button>
+          <div class="err" id="badgesErr" role="alert" hidden></div>
+        </div>
+        <div class="card stack" style="gap:12px">
+          <h2 class="h2" style="font-size:1.15rem">Feuillet d'accueil</h2>
+          <p class="small muted">Une page A4 : programme, infos pratiques, wifi, lien vers la fiche de présence.</p>
+          <button type="button" class="btn" id="dlFeuillet">Télécharger le feuillet (PDF)</button>
+          <div class="err" id="feuilletErr" role="alert" hidden></div>
+        </div>
       </section>
     </section>
 
@@ -380,7 +401,8 @@ function api(action,data){
 var ERR={network:'Pas de connexion.',phone:'Numéro invalide. Exemple : 034 00 000 00.',name:'Saisis le nom.',amount:'Montant invalide.',mode:'Choisis un mode de paiement.',server:'Erreur du serveur. Réessaie.',
   username:'Identifiant invalide (3 caractères minimum, lettres/chiffres).',weak_password:'Mot de passe trop court (8 caractères minimum).',username_taken:'Cet identifiant existe déjà.',
   title:'Saisis un titre.',course:'Cours introuvable.',cohort:'Cohorte introuvable.',session:'Date de séance invalide.',date:'Date invalide.',
-  already_enrolled:'Ce numéro est déjà inscrit à cette cohorte.',already_setup:'Un compte existe déjà.',receipt:'Reçu introuvable.',enrollment:'Inscrit introuvable.'};
+  already_enrolled:'Ce numéro est déjà inscrit à cette cohorte.',already_setup:'Un compte existe déjà.',receipt:'Reçu introuvable.',enrollment:'Inscrit introuvable.',
+  empty:'Aucun inscrit actif : rien à générer.'};
 function onErr(e){
   if(e&&e.status===401){try{localStorage.removeItem('akaa_admin_token')}catch(_){}location.reload();return}
   toast(ERR[e&&e.message]||ERR.server);
@@ -542,8 +564,24 @@ $('cohortTabs').addEventListener('click',function(e){
 });
 function renderCtabChrome(){
   document.querySelectorAll('#cohortTabs button').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.ctab===ctab))});
-  ['sessions','enr','att','fb','pay','perks'].forEach(function(k){$('t-'+k).hidden=(k!==ctab)});
+  ['sessions','enr','att','fb','pay','perks','logistics'].forEach(function(k){$('t-'+k).hidden=(k!==ctab)});
 }
+
+/* Logistique : PDF générés par le serveur */
+function downloadPdf(action,filename,btn,errId){
+  btn.disabled=true;$(errId).hidden=true;
+  fetch('/api/logistics',{method:'POST',headers:{'content-type':'application/json','x-admin-token':TOKEN},body:JSON.stringify({action:action,cohortId:cohortId})})
+   .then(function(r){if(!r.ok)return r.json().catch(function(){return {}}).then(function(j){throw new Error(j.error||'server')});return r.blob()})
+   .then(function(blob){
+     var url=URL.createObjectURL(blob),a=document.createElement('a');
+     a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+     setTimeout(function(){URL.revokeObjectURL(url)},4000);
+   })
+   .catch(function(er){$(errId).textContent=ERR[er.message]||ERR.server;$(errId).hidden=false})
+   .then(function(){btn.disabled=false});
+}
+$('dlBadges').onclick=function(){downloadPdf('badges','badges-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlBadges'),'badgesErr')};
+$('dlFeuillet').onclick=function(){downloadPdf('feuillet','feuillet-'+(CD.cohort.slug||'cohorte')+'.pdf',$('dlFeuillet'),'feuilletErr')};
 
 /* Séances */
 function renderSessions(){
@@ -606,13 +644,24 @@ function renderAtt(){
   $('attCount').textContent=list.length;
   $('attBar').style.width=Math.min(100,list.length*10)+'%';
   $('attList').innerHTML=list.length?list.slice().sort(function(a,b){return a.at.localeCompare(b.at)}).map(function(p){
-    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(p.name)+'</div><div class="small muted">Arrivé(e) à '+esc(fmtTime(p.at))+' · '+esc(showPhone(p.phone))+'</div></div><button type="button" class="btn ghost sm" data-rmatt="'+esc(p.phone)+'">Retirer</button></div>';
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(p.name)+'</div><div class="small muted">Arrivé(e) à '+esc(fmtTime(p.at))+(p.phone?' · '+esc(showPhone(p.phone)):'')+'</div></div><button type="button" class="btn ghost sm" data-rmatt="'+esc(p.enrollmentId)+'">Retirer</button></div>';
   }).join(''):'<p class="muted">Personne pour le moment.</p>';
+  var presentIds={};list.forEach(function(p){presentIds[p.enrollmentId]=true});
+  var waiting=(CD.enrollments||[]).filter(function(en){return en.status!=='annule'&&!presentIds[en.id]}).sort(function(a,b){return a.name.localeCompare(b.name)});
+  $('quickCard').hidden=!waiting.length;
+  $('quickList').innerHTML=waiting.map(function(en){
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(en.name)+'</div></div><button type="button" class="btn ghost sm" data-mark="'+esc(en.id)+'">Marquer présent</button></div>';
+  }).join('');
 }
 $('attPick').addEventListener('change',renderAtt);
 $('attList').addEventListener('click',function(e){
   var b=e.target.closest('[data-rmatt]');if(!b)return;
-  api('removeAttendance',{sessionId:$('attPick').value,phone:b.dataset.rmatt}).then(function(){toast('Retiré.');return reloadCohort()}).catch(onErr);
+  api('removeAttendance',{sessionId:$('attPick').value,enrollmentId:b.dataset.rmatt}).then(function(){toast('Retiré.');return reloadCohort()}).catch(onErr);
+});
+$('quickList').addEventListener('click',function(e){
+  var b=e.target.closest('[data-mark]');if(!b)return;b.disabled=true;
+  api('markPresent',{cohortId:cohortId,sessionId:$('attPick').value,enrollmentId:b.dataset.mark})
+   .then(function(){toast('Marqué présent.');return reloadCohort()}).catch(function(er){onErr(er);b.disabled=false});
 });
 $('attForm').addEventListener('submit',function(e){
   e.preventDefault();if(busy)return;busy=true;

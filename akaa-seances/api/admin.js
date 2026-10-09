@@ -4,9 +4,9 @@ import {
   listCourses, getCourse, createCourse, updateCourse,
   listCohorts, getCohort, createCohort, updateCohort,
   listSessions, getSession, createSession, updateSession, removeSession, pickCurrentSession, getSessionCode,
-  listEnrollments, createEnrollment, updateEnrollment, removeEnrollment,
+  listEnrollments, getEnrollment, createEnrollment, updateEnrollment, removeEnrollment,
   findEnrollmentByPhone, listNewsletterOptins,
-  recordAttendance, listAttendance, removeAttendance,
+  recordAttendance, recordAttendanceByEnrollment, listAttendance, removeAttendance,
   listFeedback, listReceipts, getSettings, saveSettingsRecord,
   MODES, KINDS,
 } from './_lib.js';
@@ -42,6 +42,7 @@ export async function POST(request) {
       case 'removeEnrollment': return json(await doRemoveEnrollment(by, b));
 
       case 'addAttendance': return json(await addAttendance(by, b));
+      case 'markPresent': return json(await markPresent(by, b));
       case 'removeAttendance': return json(await doRemoveAttendance(by, b));
 
       case 'issueReceipt': return json(await issueReceipt(by, b));
@@ -185,9 +186,22 @@ async function addAttendance(by, b) {
   if (!already) await logAction(by, 'addAttendance', `${rec.name} · ${session.date}`);
   return { ok: true, already, name: rec.name };
 }
+/* Marquer présent un inscrit déjà existant (sans ressaisir nom/téléphone) — pratique pour
+   les participants ajoutés à l'avance sans numéro. */
+async function markPresent(by, b) {
+  const cohort = await getCohort(b.cohortId);
+  if (!cohort) throw httpError(400, 'cohort');
+  const session = await getSession(b.cohortId, b.sessionId);
+  if (!session) throw httpError(400, 'session');
+  const enr = await getEnrollment(b.cohortId, b.enrollmentId);
+  if (!enr) throw httpError(404, 'enrollment');
+  const { rec, already } = await recordAttendanceByEnrollment(cohort, session, enr);
+  if (!already) await logAction(by, 'addAttendance', `${rec.name} · ${session.date}`);
+  return { ok: true, already, name: rec.name };
+}
 async function doRemoveAttendance(by, b) {
-  await removeAttendance(b.sessionId, normPhone(b.phone));
-  await logAction(by, 'removeAttendance', `${b.sessionId} · ${b.phone}`);
+  await removeAttendance(b.sessionId, b.enrollmentId);
+  await logAction(by, 'removeAttendance', `${b.sessionId} · ${b.enrollmentId}`);
   return { ok: true };
 }
 

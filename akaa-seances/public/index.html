@@ -71,9 +71,9 @@
     <section id="panF" role="tabpanel" aria-labelledby="tabF" class="card stack" style="gap:18px" hidden>
       <div id="fFormBox" class="stack" style="gap:18px">
         <div class="stack" style="gap:6px">
-          <div class="label">Retour sur la séance</div>
-          <h2 class="h2">Ton avis nous aide</h2>
-          <p class="muted">Deux minutes pour dire ce qui a marché et ce qui manque.</p>
+          <div class="label" id="fLabel">Retour sur la séance</div>
+          <h2 class="h2" id="fHeading">Ton avis nous aide</h2>
+          <p class="muted" id="fIntro">Deux minutes pour dire ce qui a marché et ce qui manque.</p>
         </div>
         <form class="form" id="feedbackForm" novalidate>
           <div class="field"><label for="fName">Nom et prénom</label><input type="text" id="fName" autocomplete="name"></div>
@@ -112,6 +112,7 @@
     <p class="foot">Comprendre. Expérimenter. Appliquer.<br>Akaa, en partenariat avec Quarantrois · © 2026</p>
   </div>
 </main>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
 (function(){
@@ -125,6 +126,9 @@ function fmtDateLong(iso){
     return s.charAt(0).toUpperCase()+s.slice(1);
   }catch(e){return iso}
 }
+
+var tT=null;
+function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tT);tT=setTimeout(function(){t.hidden=true},2800)}
 
 function post(url,data){
   return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data||{})})
@@ -143,11 +147,19 @@ post('/api/public',{cohort:qs.get('c')||undefined}).then(function(j){
   if(j.session.location)meta.push(j.session.location);
   $('meta').innerHTML=meta.map(function(m){return '<span>'+m.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})+'</span>'}).join('');
   $('loading').hidden=true;$('content').hidden=false;
-  boot();
+  boot(j.session);
 }).catch(function(){$('loading').hidden=true;$('notfound').hidden=false});
 
-function boot(){
+function boot(session){
 var KEY='akaa_participant_'+SLUG;
+var SESSION_ID=session.id;
+var IS_LAST=session.total>1&&session.index===session.total;
+if(IS_LAST){
+  $('fLabel').textContent='Avis global';
+  $('fHeading').textContent='Ton avis sur l’ensemble de la formation';
+  $('fIntro').textContent='Deux minutes pour dire ce que tu retiens de toute la formation, pas seulement d’aujourd’hui.';
+  $('scoreLbl').textContent='Note globale de la formation, sur 10';
+}
 
 /* Mémoire locale : évite de tout retaper entre présence et avis */
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
@@ -158,15 +170,20 @@ $('pMail').value=mem.email||'';$('pOrg').value=mem.company||'';
 $('pCode').value=mem.code||'';$('fCode').value=mem.code||'';
 
 /* Onglets */
+var avisUnlocked=false;
 function tab(which){
+  if(which==='f'&&!avisUnlocked)return;
   var p=which==='p';
   $('tabP').setAttribute('aria-selected',String(p));$('tabF').setAttribute('aria-selected',String(!p));
   $('panP').hidden=!p;$('panF').hidden=p;
   window.scrollTo({top:0,behavior:'smooth'});
 }
+function lockAvis(){avisUnlocked=false;$('tabF').setAttribute('aria-disabled','true');$('tabF').style.opacity='.45'}
+function unlockAvis(){avisUnlocked=true;$('tabF').removeAttribute('aria-disabled');$('tabF').style.opacity=''}
 $('tabP').onclick=function(){tab('p')};
-$('tabF').onclick=function(){tab('f')};
+$('tabF').onclick=function(){if(!avisUnlocked){toast('Confirme d’abord ta présence.');return}tab('f')};
 $('toAvis').onclick=function(){tab('f')};
+if(mem.presentFor===SESSION_ID)unlockAvis();else lockAvis();
 
 /* Notes 1 à 10 */
 var score=0;
@@ -196,7 +213,8 @@ $('presenceForm').addEventListener('submit',function(ev){
   var data={cohort:SLUG,name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value,code:$('pCode').value};
   $('pBtn').disabled=true;
   post('/api/checkin',data).then(function(j){
-    save({name:data.name,phone:data.phone,email:data.email,company:data.company,code:data.code});
+    save({name:data.name,phone:data.phone,email:data.email,company:data.company,code:data.code,presentFor:SESSION_ID});
+    unlockAvis();
     $('fName').value=data.name;$('fPhone').value=data.phone;$('fCode').value=data.code;
     $('pThanks').textContent='Merci '+first(j.name)+', c’est noté';
     $('pDoneTxt').textContent=j.already?'Ta présence était déjà enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.':'Ta présence est enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.';
