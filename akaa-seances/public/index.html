@@ -42,23 +42,52 @@
 
     <!-- PRÉSENCE -->
     <section id="panP" role="tabpanel" aria-labelledby="tabP" class="card stack" style="gap:18px">
-      <div id="pForm" class="stack" style="gap:18px">
+
+      <!-- Étape 1 : code de la séance -->
+      <div id="pCodeStep" class="stack" style="gap:18px">
         <div class="stack" style="gap:6px">
           <div class="label">Fiche de présence</div>
-          <h2 class="h2">Je confirme ma présence</h2>
-          <p class="muted">Une minute, depuis ton téléphone. Pas de papier.</p>
+          <h2 class="h2">Code de la séance</h2>
+          <p class="muted">Le code est affiché dans la salle. Il permet de retrouver la bonne séance.</p>
         </div>
-        <form class="form" id="presenceForm" novalidate>
+        <form class="form" id="pCodeForm" novalidate>
+          <div class="field"><input type="text" id="pCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····" required></div>
+          <div class="err" id="pCodeErr" role="alert" hidden></div>
+          <button type="submit" class="btn" id="pCodeBtn">Continuer</button>
+        </form>
+      </div>
+
+      <!-- Étape 2 : je choisis mon nom -->
+      <div id="pRosterStep" class="stack" style="gap:18px" hidden>
+        <div class="stack" style="gap:6px">
+          <div class="label">Fiche de présence</div>
+          <h2 class="h2">Qui es-tu ?</h2>
+          <p class="muted">Touche ton nom dans la liste.</p>
+        </div>
+        <div class="stack" id="pRosterList" style="gap:8px"></div>
+        <div class="err" id="pRosterErr" role="alert" hidden></div>
+        <button type="button" class="btn ghost" id="pNotListed">Je ne suis pas dans la liste</button>
+        <button type="button" class="btn ghost" id="pBackToCode">← Changer de code</button>
+      </div>
+
+      <!-- Étape 2b : pas dans la liste -->
+      <div id="pFallbackStep" class="stack" style="gap:18px" hidden>
+        <div class="stack" style="gap:6px">
+          <div class="label">Fiche de présence</div>
+          <h2 class="h2">Tes coordonnées</h2>
+          <p class="muted">Tu n’es pas encore dans la liste des inscrits : on te crée une fiche.</p>
+        </div>
+        <form class="form" id="pFallbackForm" novalidate>
           <div class="field"><label for="pName">Nom et prénom</label><input type="text" id="pName" autocomplete="name" required></div>
           <div class="field"><label for="pPhone">Numéro WhatsApp</label><input type="tel" id="pPhone" inputmode="tel" autocomplete="tel" placeholder="034 00 000 00" required><span class="hint">Ton reçu de paiement t’y sera envoyé.</span></div>
           <div class="field"><label for="pMail">E-mail <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="email" id="pMail" autocomplete="email"></div>
           <div class="field"><label for="pOrg">Entreprise <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="pOrg" autocomplete="organization"></div>
-          <div class="field"><label for="pCode">Code de la séance</label><input type="text" id="pCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····"><span class="hint">Le code est affiché dans la salle.</span></div>
           <div class="err" id="pErr" role="alert" hidden></div>
           <button type="submit" class="btn" id="pBtn">Je suis présent(e)</button>
         </form>
-        <div class="note"><div class="label">À savoir</div><p class="small">Ton nom et ton numéro servent à la fiche de présence et à l’envoi de ton reçu.</p></div>
+        <button type="button" class="btn ghost" id="pBackToRoster">← Retour à la liste</button>
       </div>
+
       <div id="pDone" class="done" hidden>
         <div class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
         <h2 class="h2" id="pThanks">Présence enregistrée</h2>
@@ -75,9 +104,8 @@
           <h2 class="h2" id="fHeading">Ton avis nous aide</h2>
           <p class="muted" id="fIntro">Deux minutes pour dire ce qui a marché et ce qui manque.</p>
         </div>
+        <p class="small" id="fWho" style="margin-top:-6px"></p>
         <form class="form" id="feedbackForm" novalidate>
-          <div class="field"><label for="fName">Nom et prénom</label><input type="text" id="fName" autocomplete="name"></div>
-          <div class="field"><label for="fPhone">Numéro WhatsApp</label><input type="tel" id="fPhone" inputmode="tel" autocomplete="tel" placeholder="034 00 000 00"><span class="hint">Le même que pour ta présence.</span></div>
           <div class="field">
             <span class="lbl" id="scoreLbl">Note globale de la séance, sur 10</span>
             <div class="scores" id="scores" role="group" aria-labelledby="scoreLbl"></div>
@@ -96,7 +124,6 @@
           <div class="field"><label for="fQuote">Un mot pour les futurs participants <span class="muted" style="font-weight:400">(facultatif)</span></label><textarea id="fQuote"></textarea></div>
           <label class="check"><input type="checkbox" id="fCite"><span>J’accepte que ce mot soit cité, avec mon prénom.</span></label>
           <label class="check"><input type="checkbox" id="fContact"><span>J’accepte d’être contacté(e) par WhatsApp ou e-mail pour les prochaines formations.</span></label>
-          <div class="field"><label for="fCode">Code de la séance</label><input type="text" id="fCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····"></div>
           <div class="err" id="fErr" role="alert" hidden></div>
           <button type="submit" class="btn" id="fBtn">Envoyer mon avis</button>
         </form>
@@ -150,24 +177,30 @@ post('/api/public',{cohort:qs.get('c')||undefined}).then(function(j){
   boot(j.session);
 }).catch(function(){$('loading').hidden=true;$('notfound').hidden=false});
 
-function boot(session){
+function boot(guessSession){
 var KEY='akaa_participant_'+SLUG;
-var SESSION_ID=session.id;
-var IS_LAST=session.total>1&&session.index===session.total;
-if(IS_LAST){
-  $('fLabel').textContent='Avis global';
-  $('fHeading').textContent='Ton avis sur l’ensemble de la formation';
-  $('fIntro').textContent='Deux minutes pour dire ce que tu retiens de toute la formation, pas seulement d’aujourd’hui.';
-  $('scoreLbl').textContent='Note globale de la formation, sur 10';
-}
 
-/* Mémoire locale : évite de tout retaper entre présence et avis */
+/* Mémoire locale : qui on est, pour quelle séance, une fois la présence confirmée */
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
 function save(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
 var mem=load();
-['Name','Phone'].forEach(function(k){var v=mem[k.toLowerCase()]||'';$('p'+k).value=v;$('f'+k).value=v});
-$('pMail').value=mem.email||'';$('pOrg').value=mem.company||'';
-$('pCode').value=mem.code||'';$('fCode').value=mem.code||'';
+$('pCode').value=mem.code||'';
+
+function setAvisLabels(session){
+  var isLast=session.total>1&&session.index===session.total;
+  if(isLast){
+    $('fLabel').textContent='Avis global';
+    $('fHeading').textContent='Ton avis sur l’ensemble de la formation';
+    $('fIntro').textContent='Deux minutes pour dire ce que tu retiens de toute la formation, pas seulement d’aujourd’hui.';
+    $('scoreLbl').textContent='Note globale de la formation, sur 10';
+  }else{
+    $('fLabel').textContent='Retour sur la séance';
+    $('fHeading').textContent='Ton avis nous aide';
+    $('fIntro').textContent='Deux minutes pour dire ce qui a marché et ce qui manque.';
+    $('scoreLbl').textContent='Note globale de la séance, sur 10';
+  }
+}
+setAvisLabels(guessSession);
 
 /* Onglets */
 var avisUnlocked=false;
@@ -183,7 +216,8 @@ function unlockAvis(){avisUnlocked=true;$('tabF').removeAttribute('aria-disabled
 $('tabP').onclick=function(){tab('p')};
 $('tabF').onclick=function(){if(!avisUnlocked){toast('Confirme d’abord ta présence.');return}tab('f')};
 $('toAvis').onclick=function(){tab('f')};
-if(mem.presentFor===SESSION_ID)unlockAvis();else lockAvis();
+if(mem.presentFor&&mem.enrollmentId)unlockAvis();else lockAvis();
+if(mem.name)$('fWho').textContent='Avis de '+mem.name;
 
 /* Notes 1 à 10 */
 var score=0;
@@ -200,40 +234,90 @@ var MSG={
   score:'Choisis une note de 1 à 10.',
   recommend:'Dis-nous si tu recommanderais la formation.',
   session:'Aucune séance programmée pour le moment.',
+  enrollment:'Cette fiche n’existe plus. Recommence.',
   cohort:'Lien invalide. Demande le bon lien à l’organisateur.',
   network:'Pas de connexion. Réessaie dans un instant.',
   server:'Une erreur est survenue. Réessaie, ou préviens l’organisateur.'
 };
 function showErr(id,key){var e=$(id);e.textContent=MSG[key]||MSG.server;e.hidden=false}
 function first(n){return String(n||'').trim().split(/\s+/)[0]}
+function esc(s){return String(s||'').replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
 
-/* Présence */
-$('presenceForm').addEventListener('submit',function(ev){
+function showStep(id){['pCodeStep','pRosterStep','pFallbackStep'].forEach(function(s){$(s).hidden=(s!==id)})}
+
+function showDone(session,enrollmentId,name,already){
+  save({code:CURRENT_CODE,sessionId:session.id,enrollmentId:enrollmentId,name:name,presentFor:session.id});
+  setAvisLabels(session);
+  $('fWho').textContent='Avis de '+name;
+  unlockAvis();
+  $('pThanks').textContent='Merci '+first(name)+', c’est noté';
+  $('pDoneTxt').textContent=already?'Ta présence était déjà enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.':'Ta présence est enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.';
+  $('pCodeStep').hidden=true;$('pRosterStep').hidden=true;$('pFallbackStep').hidden=true;$('pDone').hidden=false;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* Étape 1 : code -> résout la vraie séance (il peut y en avoir plusieurs le même jour)
+   et renvoie la liste des inscrits, pour reconnaître son nom plutôt que le retaper */
+var CURRENT_CODE='',CURRENT_SESSION=null,CURRENT_ROSTER=[];
+$('pCodeForm').addEventListener('submit',function(ev){
+  ev.preventDefault();$('pCodeErr').hidden=true;
+  var code=$('pCode').value;
+  $('pCodeBtn').disabled=true;
+  post('/api/public',{cohort:SLUG,code:code}).then(function(j){
+    CURRENT_CODE=code;CURRENT_SESSION=j.session;CURRENT_ROSTER=j.roster||[];
+    if(mem.presentFor===j.session.id&&mem.enrollmentId){
+      showDone(j.session,mem.enrollmentId,mem.name,true);return;
+    }
+    renderRoster();
+    showStep('pRosterStep');
+  }).catch(function(e){showErr('pCodeErr',e.message)}).then(function(){$('pCodeBtn').disabled=false});
+});
+
+function renderRoster(){
+  var h='';
+  CURRENT_ROSTER.forEach(function(e){
+    if(e.already){
+      h+='<button type="button" class="btn ghost" disabled style="justify-content:space-between"><span>'+esc(e.name)+'</span><span class="pill ok">Déjà enregistré</span></button>';
+    }else{
+      h+='<button type="button" class="btn ghost" data-id="'+e.id+'">'+esc(e.name)+'</button>';
+    }
+  });
+  $('pRosterList').innerHTML=h;
+}
+$('pRosterList').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-id]');if(!b)return;
+  $('pRosterErr').hidden=true;
+  [].forEach.call($('pRosterList').children,function(x){x.disabled=true});
+  post('/api/checkin',{cohort:SLUG,code:CURRENT_CODE,enrollmentId:b.dataset.id}).then(function(j){
+    showDone(CURRENT_SESSION,j.enrollmentId,j.name,j.already);
+  }).catch(function(e){showErr('pRosterErr',e.message);renderRoster()});
+});
+$('pNotListed').onclick=function(){showStep('pFallbackStep')};
+$('pBackToCode').onclick=function(){showStep('pCodeStep')};
+$('pBackToRoster').onclick=function(){showStep('pRosterStep')};
+
+/* Étape 2b : pas dans la liste -> on crée la fiche */
+$('pFallbackForm').addEventListener('submit',function(ev){
   ev.preventDefault();$('pErr').hidden=true;
-  var data={cohort:SLUG,name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value,code:$('pCode').value};
+  var data={cohort:SLUG,code:CURRENT_CODE,name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value};
   $('pBtn').disabled=true;
   post('/api/checkin',data).then(function(j){
-    save({name:data.name,phone:data.phone,email:data.email,company:data.company,code:data.code,presentFor:SESSION_ID});
-    unlockAvis();
-    $('fName').value=data.name;$('fPhone').value=data.phone;$('fCode').value=data.code;
-    $('pThanks').textContent='Merci '+first(j.name)+', c’est noté';
-    $('pDoneTxt').textContent=j.already?'Ta présence était déjà enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.':'Ta présence est enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.';
-    $('pForm').hidden=true;$('pDone').hidden=false;window.scrollTo({top:0,behavior:'smooth'});
+    showDone(CURRENT_SESSION,j.enrollmentId,j.name,j.already);
   }).catch(function(e){showErr('pErr',e.message)}).then(function(){$('pBtn').disabled=false});
 });
 
-/* Avis */
+/* Avis : l'identité (enrollmentId + code de la séance) vient de la présence déjà confirmée */
 $('feedbackForm').addEventListener('submit',function(ev){
   ev.preventDefault();$('fErr').hidden=true;
   var rec=document.querySelector('input[name="rec"]:checked');
   if(!score){showErr('fErr','score');return}
   if(!rec){showErr('fErr','recommend');return}
-  var data={cohort:SLUG,name:$('fName').value,phone:$('fPhone').value,code:$('fCode').value,score:score,recommend:rec.value,
+  var m=load();
+  var data={cohort:SLUG,code:m.code,enrollmentId:m.enrollmentId,score:score,recommend:rec.value,
     helped:$('fHelped').value,missing:$('fMissing').value,next:$('fNext').value,quote:$('fQuote').value,
     consentCite:$('fCite').checked,consentContact:$('fContact').checked};
   $('fBtn').disabled=true;
   post('/api/feedback',data).then(function(j){
-    var m=load();m.name=data.name;m.phone=data.phone;m.code=data.code;save(m);
     $('fThanks').textContent='Merci '+first(j.name)+' !';
     $('fFormBox').hidden=true;$('fDone').hidden=false;window.scrollTo({top:0,behavior:'smooth'});
   }).catch(function(e){showErr('fErr',e.message)}).then(function(){$('fBtn').disabled=false});

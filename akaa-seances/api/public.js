@@ -1,16 +1,37 @@
 import {
   json, fail, readBody, httpError, today,
   getCohortBySlug, getCourse, listCohorts, listSessions, pickCurrentSession,
+  findSessionByCode, listEnrollmentRoster,
 } from './_lib.js';
 
-/* Résolution publique d'une cohorte (et de sa séance du jour) pour la page participant.
-   Le contenu pédagogique n'est pas géré ici : seulement logistique (dates, lieu, code). */
+/* Résolution publique d'une cohorte pour la page participant. Sans code : juste de quoi
+   afficher l'en-tête (séance "probable" du jour, pour l'affichage, pas pour enregistrer
+   quoi que ce soit). Avec code : la vraie séance qu'il désigne (il peut y en avoir
+   plusieurs le même jour, seul le code sait laquelle) + la liste des inscrits à choisir,
+   pour éviter de ressaisir nom/téléphone et de créer des doublons. */
 export async function POST(request) {
   try {
     const b = await readBody(request);
     const cohort = b.cohort ? await getCohortBySlug(b.cohort) : await pickDefaultCohort();
     if (!cohort || cohort.status === 'brouillon') throw httpError(404, 'cohort');
     const course = await getCourse(cohort.courseId);
+
+    if (b.code) {
+      const session = await findSessionByCode(cohort.id, b.code);
+      if (!session) throw httpError(403, 'code');
+      const sessions = await listSessions(cohort.id);
+      const roster = await listEnrollmentRoster(cohort.id, session.id);
+      return json({
+        ok: true,
+        cohort: { name: cohort.name, slug: cohort.slug },
+        session: {
+          id: session.id, index: session.index, date: session.date, start: session.start, end: session.end,
+          location: session.location || cohort.location, topic: session.topic, total: sessions.length,
+        },
+        roster,
+      });
+    }
+
     const sessions = await listSessions(cohort.id);
     const session = pickCurrentSession(sessions);
     return json({

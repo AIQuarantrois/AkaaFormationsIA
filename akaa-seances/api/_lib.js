@@ -378,6 +378,17 @@ export async function checkCode(code, sessionId) {
   const expected = await getSessionCode(sessionId);
   if (clean(code, 20) !== expected) throw httpError(403, 'code');
 }
+/* Retrouve la séance correspondant à un code saisi, sans deviner par la date : utile
+   quand une cohorte peut avoir plusieurs séances le même jour, et seul le code sait laquelle. */
+export async function findSessionByCode(cohortId, code) {
+  const c = clean(code, 20);
+  if (!c) return null;
+  const sessions = await listSessions(cohortId);
+  for (const s of sessions) {
+    if ((await getSessionCode(s.id)) === c) return s;
+  }
+  return null;
+}
 
 /* ---- inscriptions : un participant rattaché à une cohorte ---- */
 export async function listEnrollments(cohortId) {
@@ -439,6 +450,18 @@ export async function updateEnrollment(cohortId, id, d, by) {
 }
 export async function removeEnrollment(cohortId, id) {
   return removeBlob(`enr/${clean(cohortId, 40)}/${clean(id, 40)}.json`);
+}
+/* Liste à choix pour la fiche de présence publique : juste de quoi reconnaître son nom,
+   rien de plus (pas de téléphone, pas d'e-mail). */
+export async function listEnrollmentRoster(cohortId, sessionId) {
+  const [enrollments, attendance] = await Promise.all([
+    listEnrollments(cohortId),
+    sessionId ? listAttendance(sessionId) : Promise.resolve([]),
+  ]);
+  const present = new Set(attendance.map((a) => a.enrollmentId));
+  return enrollments
+    .filter((e) => e.status !== 'annule')
+    .map((e) => ({ id: e.id, name: e.name, already: present.has(e.id) }));
 }
 export async function listNewsletterOptins() {
   const all = await readAll('enr/');
@@ -502,25 +525,31 @@ export async function verifyBadgeToken(token) {
   }
 }
 
-/* ---- avis : un par séance et par participant ---- */
-export async function recordFeedback(cohort, session, d) {
-  const name = clean(d.name, 80);
-  const phone = normPhone(d.phone);
+/* ---- avis : un par séance et par inscription (clé = enrollmentId, comme la présence,
+   pour ne plus jamais redemander le nom/téléphone une fois l'identité connue) ---- */
+export async function recordFeedbackByEnrollment(cohort, session, enr, d) {
   const score = Number(d.score);
   const recommend = ['oui', 'peut-etre', 'non'].includes(d.recommend) ? d.recommend : '';
-  if (name.length < 2) throw httpError(400, 'name');
-  if (!phone) throw httpError(400, 'phone');
   if (!Number.isInteger(score) || score < 1 || score > 10) throw httpError(400, 'score');
   if (!recommend) throw httpError(400, 'recommend');
   const rec = {
-    sessionId: session.id, cohortId: cohort.id, name, phone, score,
+    sessionId: session.id, cohortId: cohort.id, enrollmentId: enr.id, name: enr.name, phone: enr.phone, score,
     helped: cleanLong(d.helped), missing: cleanLong(d.missing), recommend,
     next: clean(d.next, 300), quote: cleanLong(d.quote, 800),
     consentCite: d.consentCite === true, consentContact: d.consentContact === true,
     at: new Date().toISOString(),
   };
-  await putJson(`fb/${session.id}/${phone}.json`, rec, true);
+  await putJson(`fb/${session.id}/${enr.id}.json`, rec, true);
   return rec;
+}
+export async function recordFeedback(cohort, session, d, by) {
+  const name = clean(d.name, 80);
+  const phone = normPhone(d.phone);
+  if (name.length < 2) throw httpError(400, 'name');
+  if (!phone) throw httpError(400, 'phone');
+  let enr = await findEnrollmentByPhone(cohort.id, phone);
+  if (!enr) enr = await createEnrollment(cohort.id, { name, phone }, by, 'avis');
+  return recordFeedbackByEnrollment(cohort, session, enr, d);
 }
 export async function listFeedback(sessionId) {
   return readAll(`fb/${clean(sessionId, 40)}/`);
