@@ -1,5 +1,5 @@
 import { put, list, get, del } from '@vercel/blob';
-import { timingSafeEqual, randomInt } from 'node:crypto';
+import { timingSafeEqual, randomInt, createHmac } from 'node:crypto';
 
 export const SESSIONS = { s1: '2026-10-10', s2: '2026-10-17' };
 export const MODES = ['Espèces', 'Mvola', 'Orange Money', 'Airtel Money'];
@@ -68,16 +68,48 @@ export async function checkCode(code, sid) {
   if (clean(code, 20) !== expected) throw httpError(403, 'code');
 }
 
-export async function requireAdmin(request) {
+/* Authentification admin : mot de passe (ADMIN_PIN) -> jeton de session signé, valable 12h.
+   Le jeton change de clé de signature dès que ADMIN_PIN change, ce qui invalide d'un coup
+   toutes les sessions en cours si le mot de passe est modifié. */
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+
+function sessionKey() {
+  return createHmac('sha256', 'akaa-seances-session').update(process.env.ADMIN_PIN || '').digest();
+}
+
+export function checkPassword(password) {
   const pin = process.env.ADMIN_PIN || '';
-  const got = request.headers.get('x-admin-pin') || '';
-  const a = Buffer.from(got);
+  const a = Buffer.from(String(password || ''));
   const b = Buffer.from(pin);
-  const ok = pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
-  if (!ok) {
-    await new Promise((r) => setTimeout(r, 700));
-    throw httpError(401, 'pin');
+  return pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function issueToken() {
+  const payload = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
+  const sig = createHmac('sha256', sessionKey()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function verifyToken(token) {
+  const [payload, sig] = String(token || '').split('.');
+  if (!payload || !sig) return false;
+  const expected = createHmac('sha256', sessionKey()).update(payload).digest('base64url');
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
+  try {
+    const { exp } = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    return typeof exp === 'number' && Date.now() < exp;
+  } catch {
+    return false;
   }
+}
+
+export async function requireAdmin(request) {
+  const token = request.headers.get('x-admin-token') || '';
+  if (verifyToken(token)) return;
+  await new Promise((r) => setTimeout(r, 700));
+  throw httpError(401, 'pin');
 }
 
 /* ---- stockage : un fichier JSON privé par enregistrement ---- */

@@ -67,7 +67,7 @@ details[open]>summary{margin-bottom:14px}
     <form class="card form" id="gateForm" style="width:100%;gap:20px">
       <img src="/logo-blue.png" alt="Akaa" width="79" height="40" style="height:40px;width:auto;align-self:center">
       <div class="stack" style="gap:10px"><div class="eyebrow">Espace organisateur</div><h1 class="display" style="font-size:2.1rem">Heureux de vous retrouver.</h1></div>
-      <div class="field"><label for="pin">Code d’accès</label><input type="password" id="pin" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label for="pin">Mot de passe</label><input type="password" id="pin" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="err" id="gateErr" role="alert" hidden></div>
       <button type="submit" class="btn" id="gateBtn">Entrer</button>
     </form>
@@ -202,8 +202,8 @@ var fmtTime=function(i){try{return new Date(i).toLocaleTimeString('fr-FR',{hour:
 var todayISO=function(){try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Antananarivo'}).format(new Date())}catch(e){return new Date().toISOString().slice(0,10)}};
 var showPhone=function(p){return p?'+'+p.replace(/^(\d{3})(\d{2})(\d{3})(\d{2})(\d{2})$/,'$1 $2 $3 $4 $5'):''};
 
-var PIN='',D=null,sid='s1',tab='pres',viewing=null,confirmVoid=null,confirmRm=null,timer=null,busy=false;
-try{PIN=sessionStorage.getItem('akaa_pin')||''}catch(e){}
+var TOKEN='',D=null,sid='s1',tab='pres',viewing=null,confirmVoid=null,confirmRm=null,timer=null,busy=false;
+try{TOKEN=localStorage.getItem('akaa_admin_token')||''}catch(e){}
 
 var tT=null;
 function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tT);tT=setTimeout(function(){t.hidden=true},2800)}
@@ -211,8 +211,13 @@ function copy(text,msg){
   function fb(){$('fallback').hidden=false;var t=$('fallbackTxt');t.value=text;t.focus();t.select()}
   try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){toast(msg)},fb);else fb()}catch(e){fb()}
 }
+function apiRaw(body){
+  return fetch('/api/admin',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+    .catch(function(){var e=new Error('network');throw e})
+    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok){var e=new Error(j.error||'server');e.status=r.status;throw e}return j})});
+}
 function api(action,data){
-  return fetch('/api/admin',{method:'POST',headers:{'content-type':'application/json','x-admin-pin':PIN},body:JSON.stringify(Object.assign({action:action},data||{}))})
+  return fetch('/api/admin',{method:'POST',headers:{'content-type':'application/json','x-admin-token':TOKEN},body:JSON.stringify(Object.assign({action:action},data||{}))})
     .catch(function(){var e=new Error('network');throw e})
     .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok){var e=new Error(j.error||'server');e.status=r.status;throw e}return j})});
 }
@@ -225,17 +230,19 @@ function enter(){
   timer=setInterval(function(){if(!document.hidden&&!busy)refresh(true)},30000);
 }
 $('gateForm').addEventListener('submit',function(e){
-  e.preventDefault();PIN=$('pin').value.trim();$('gateErr').hidden=true;$('gateBtn').disabled=true;
-  api('overview').then(function(j){try{sessionStorage.setItem('akaa_pin',PIN)}catch(_){}D=j;sid=j.current||'s1';enter()})
-   .catch(function(err){$('gateErr').textContent=err.status===401?'Code incorrect.':(ERR[err.message]||ERR.server);$('gateErr').hidden=false})
+  e.preventDefault();var password=$('pin').value.trim();$('gateErr').hidden=true;$('gateBtn').disabled=true;
+  apiRaw({action:'login',password:password})
+   .then(function(j){TOKEN=j.token;try{localStorage.setItem('akaa_admin_token',TOKEN)}catch(_){}return api('overview')})
+   .then(function(j){D=j;sid=j.current||'s1';enter()})
+   .catch(function(err){$('gateErr').textContent=err.status===401?'Mot de passe incorrect.':(ERR[err.message]||ERR.server);$('gateErr').hidden=false})
    .then(function(){$('gateBtn').disabled=false});
 });
-$('quitBtn').onclick=function(){try{sessionStorage.removeItem('akaa_pin')}catch(e){}location.reload()};
+$('quitBtn').onclick=function(){try{localStorage.removeItem('akaa_admin_token')}catch(e){}location.reload()};
 $('refreshBtn').onclick=function(){refresh()};
 
 function refresh(silent){
   return api('overview').then(function(j){D=j;renderAll();if(!silent)toast('À jour.')})
-    .catch(function(e){if(e.status===401){try{sessionStorage.removeItem('akaa_pin')}catch(_){}location.reload()}else if(!silent)toast(ERR[e.message]||ERR.server)});
+    .catch(function(e){if(e.status===401){try{localStorage.removeItem('akaa_admin_token')}catch(_){}location.reload()}else if(!silent)toast(ERR[e.message]||ERR.server)});
 }
 
 /* Navigation */
@@ -438,8 +445,8 @@ $('qrBtn').onclick=function(){
 $('qrClose').onclick=function(){$('qrOverlay').hidden=true};
 $('fallbackClose').onclick=function(){$('fallback').hidden=true};
 
-/* Reprise automatique si le code est déjà en mémoire */
-if(PIN){api('overview').then(function(j){D=j;sid=j.current||'s1';enter()}).catch(function(){try{sessionStorage.removeItem('akaa_pin')}catch(e){}})}
+/* Reprise automatique si une session valide est déjà en mémoire */
+if(TOKEN){api('overview').then(function(j){D=j;sid=j.current||'s1';enter()}).catch(function(){try{localStorage.removeItem('akaa_admin_token')}catch(e){}})}
 })();
 </script>
 </body>

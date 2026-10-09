@@ -1,13 +1,16 @@
 import {
-  json, fail, readBody, requireAdmin, readAll, putJson, removeBlob, recordPresence, alreadyExists,
-  clean, normPhone, httpError, today, currentSession, getSessionCode, SESSIONS, MODES, KINDS, OBJET,
+  json, fail, readBody, requireAdmin, checkPassword, issueToken, readAll, putJson, removeBlob,
+  recordPresence, alreadyExists, clean, normPhone, httpError, today, currentSession, getSessionCode,
+  SESSIONS, MODES, KINDS, OBJET,
 } from './_lib.js';
 
-/* Espace organisateur : toutes les actions exigent le code d'accès (en-tête x-admin-pin). */
+/* Espace organisateur : login par mot de passe, puis toutes les actions exigent le
+   jeton de session qui en résulte (en-tête x-admin-token). */
 export async function POST(request) {
   try {
-    await requireAdmin(request);
     const b = await readBody(request);
+    if (b.action === 'login') return json(await login(b));
+    await requireAdmin(request);
     switch (b.action) {
       case 'overview': return json(await overview());
       case 'addPresence': return json(await addPresence(b));
@@ -20,6 +23,14 @@ export async function POST(request) {
   } catch (e) {
     return fail(e);
   }
+}
+
+async function login(b) {
+  if (!checkPassword(b.password)) {
+    await new Promise((r) => setTimeout(r, 700));
+    throw httpError(401, 'pin');
+  }
+  return { token: issueToken() };
 }
 
 async function overview() {
