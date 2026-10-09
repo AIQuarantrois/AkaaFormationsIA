@@ -261,8 +261,7 @@ function drawFeuilletPage(pdfDoc, font, fontBold, akaaLogo, qrtLogo, cohort, cou
   const presenceUrl = `${origin}/?c=${cohort.slug}`;
   drawQr(page, presenceUrl, margin, y - qrSize, qrSize, INK);
   page.drawText('Fiche de présence en ligne', { x: margin + qrSize + 8 * mm, y: y - 8 * mm, size: 10.5, font: fontBold, color: INK });
-  page.drawText('(lien temporaire — pourra changer)', { x: margin + qrSize + 8 * mm, y: y - 13 * mm, size: 8.5, font, color: MUTED });
-  page.drawText(presenceUrl, { x: margin + qrSize + 8 * mm, y: y - 18 * mm, size: 8, font, color: BLUE_INK });
+  page.drawText(presenceUrl, { x: margin + qrSize + 8 * mm, y: y - 14 * mm, size: 8, font, color: BLUE_INK });
 
   const footY = 20 * mm;
   page.drawLine({ start: { x: margin, y: footY + 6 * mm }, end: { x: PAGE_W - margin, y: footY + 6 * mm }, thickness: 0.8, color: LINE });
