@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F8FAFE">
+<title>Espace organisateur · Akaa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/akaa.css">
+<style>
+.bar{background:rgba(248,250,254,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top,0px) + 12px) 0 12px;position:sticky;top:0;z-index:5}
+.bar .in{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bar img{height:30px;width:auto;display:block}
+.bar .t{font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-ink)}
+.bar button{background:#fff;color:var(--blue-ink);border:1px solid var(--line);border-bottom:3px solid var(--blue-mid);border-radius:12px;min-height:40px;padding:6px 12px;font-weight:600;cursor:pointer}
+main{padding-block:18px 64px}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding-block:14px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0;padding-top:0}
+.item:last-child{padding-bottom:0}
+.nm{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.big{font-size:3rem;font-weight:300;line-height:1;letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums}
+.bigcode{font-family:var(--mono);font-size:2.2rem;font-weight:500;letter-spacing:.3em;color:var(--blue-ink);font-variant-numeric:tabular-nums}
+.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.progress span{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{min-height:52px;border:1px solid var(--line);background:#fff;border-radius:16px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 3px 0 var(--blue-dark)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stats div{background:var(--blue-soft);border-radius:18px;padding:12px 14px}
+.stats b{display:block;font-size:1.6rem;font-weight:400;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums}
+.fb{padding-block:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.fb:first-child{border-top:0;padding-top:0}
+.amount{font-weight:600;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.void{text-decoration:line-through;opacity:.55}
+button.open{all:unset;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;cursor:pointer}
+button.open:focus-visible{outline:3px solid var(--blue-mid);outline-offset:4px;border-radius:8px}
+.paper{position:relative;background:#fff;border:1px solid var(--line);border-radius:26px;overflow:hidden;box-shadow:0 12px 40px -18px rgba(15,30,60,.18)}
+.paper .band{background:var(--blue-soft);padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.paper .band img{height:34px;width:auto;display:block}
+.paper .body{padding:20px;display:flex;flex-direction:column;gap:18px}
+.paper .amt{font-size:2.5rem;font-weight:300;letter-spacing:-.04em;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
+.dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;margin:0}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0;font-weight:600;color:var(--ink);text-align:right;overflow-wrap:anywhere}
+.paper .issuer{border-top:1px dashed var(--blue-mid);padding-top:14px;display:flex;flex-direction:column;gap:2px}
+.stamp{position:absolute;right:16px;top:90px;transform:rotate(-10deg);border:3px solid var(--bad);color:var(--bad);padding:2px 12px;font-weight:700;font-size:1.5rem;border-radius:10px;letter-spacing:.08em;background:rgba(255,255,255,.85)}
+.tot{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-variant-numeric:tabular-nums}
+.tot .t{font-weight:600;color:var(--ink);border-top:1px solid var(--line);padding-top:8px}
+.qr{position:fixed;inset:0;z-index:20;background:var(--bg) radial-gradient(70% 380px at 50% 0%,#DCE8FF 0%,rgba(220,232,255,0) 100%) no-repeat;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+.qr .box{background:#fff;border:1px solid var(--line);border-radius:28px;padding:26px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;box-shadow:0 12px 40px -18px rgba(15,30,60,.2)}
+.qr svg{width:100%;max-width:320px;height:auto;display:block}
+details>summary{cursor:pointer;font-weight:600;color:var(--ink);min-height:34px;display:flex;align-items:center}
+details[open]>summary{margin-bottom:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;font-weight:600;max-width:calc(100vw - 32px);text-align:center}
+</style>
+</head>
+<body>
+
+<!-- Accès -->
+<section id="gate">
+  <div class="wrap" style="min-height:100vh;display:flex;align-items:center;padding-block:24px">
+    <form class="card form" id="gateForm" style="width:100%;gap:20px">
+      <img src="/logo-blue.png" alt="Akaa" width="79" height="40" style="height:40px;width:auto;align-self:center">
+      <div class="stack" style="gap:10px"><div class="eyebrow">Espace organisateur</div><h1 class="display" style="font-size:2.1rem">Heureux de vous retrouver.</h1></div>
+      <div class="field"><label for="pin">Code d’accès</label><input type="password" id="pin" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="err" id="gateErr" role="alert" hidden></div>
+      <button type="submit" class="btn" id="gateBtn">Entrer</button>
+    </form>
+  </div>
+</section>
+
+<!-- Application -->
+<div id="app" hidden>
+  <div class="bar"><div class="wrap in">
+    <div style="display:flex;align-items:center;gap:12px;min-width:0"><img src="/logo-blue.png" alt="Akaa" width="59" height="30"><span class="t">Organisateur</span></div>
+    <div style="display:flex;gap:8px"><button type="button" id="refreshBtn">Actualiser</button><button type="button" id="quitBtn">Quitter</button></div>
+  </div></div>
+
+  <main class="wrap stack" style="gap:16px">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><div class="label">Code de la séance</div><div class="bigcode" id="code">····</div></div>
+      <button type="button" class="btn ghost sm" id="qrBtn" style="flex:0 0 auto">Afficher le QR</button>
+    </div>
+
+    <div class="tabs three" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" data-tab="pres" aria-selected="true">Présences</button>
+      <button type="button" role="tab" data-tab="avis" aria-selected="false">Avis</button>
+      <button type="button" role="tab" data-tab="rec" aria-selected="false">Reçus</button>
+    </div>
+
+    <div class="seg" id="sessSeg" role="group" aria-label="Séance">
+      <button type="button" data-sid="s1" aria-pressed="true">Séance 1 · 10 oct.</button>
+      <button type="button" data-sid="s2" aria-pressed="false">Séance 2 · 17 oct.</button>
+    </div>
+
+    <!-- Présences -->
+    <section id="t-pres" class="stack" style="gap:16px">
+      <div class="card stack" style="gap:10px">
+        <div style="display:flex;align-items:flex-end;gap:8px"><div class="big" id="pCount">0</div><div class="muted" style="padding-bottom:4px">présent(s)</div></div>
+        <div class="progress" aria-hidden="true"><span id="pBar"></span></div>
+      </div>
+      <div class="card"><div id="pList" class="list"><p class="muted">Chargement…</p></div></div>
+      <details class="card">
+        <summary>Ajouter une personne à la main</summary>
+        <form class="form" id="addForm" novalidate>
+          <div class="field"><label for="aName">Nom et prénom</label><input type="text" id="aName"></div>
+          <div class="field"><label for="aPhone">Numéro WhatsApp</label><input type="tel" id="aPhone" inputmode="tel"></div>
+          <div class="field"><label for="aMail">E-mail (facultatif)</label><input type="email" id="aMail"></div>
+          <div class="field"><label for="aOrg">Entreprise (facultatif)</label><input type="text" id="aOrg"></div>
+          <button type="submit" class="btn">Ajouter</button>
+        </form>
+      </details>
+      <button type="button" class="btn ghost" id="copyPres">Copier la liste de présence</button>
+    </section>
+
+    <!-- Avis -->
+    <section id="t-avis" class="stack" style="gap:16px" hidden>
+      <div class="card" id="avisBox"><p class="muted">Chargement…</p></div>
+      <button type="button" class="btn ghost" id="copyAvis">Copier la synthèse des avis</button>
+    </section>
+
+    <!-- Reçus -->
+    <section id="t-rec" class="stack" style="gap:16px" hidden>
+      <div class="card stack" style="gap:16px">
+        <h2 class="h2">Nouveau reçu</h2>
+        <form class="form" id="rcForm" novalidate>
+          <div class="field"><label for="rcPick">Participant présent</label><select id="rcPick"></select></div>
+          <div class="field"><label for="rcName">Nom et prénom</label><input type="text" id="rcName"></div>
+          <div class="field"><label for="rcPhone">Numéro WhatsApp</label><input type="tel" id="rcPhone" inputmode="tel"></div>
+          <div class="field"><label for="rcMail">E-mail (facultatif)</label><input type="email" id="rcMail"></div>
+          <div class="field"><span class="lbl" id="kindLbl">Type de paiement</span><div class="chips three" id="kinds" role="radiogroup" aria-labelledby="kindLbl"></div></div>
+          <div class="field"><label for="rcAmt">Montant encaissé (Ar)</label><input type="number" id="rcAmt" inputmode="numeric" min="0" step="1000" value="200000"></div>
+          <div class="field"><span class="lbl" id="modeLbl">Mode de paiement</span><div class="chips" id="modes" role="radiogroup" aria-labelledby="modeLbl"></div></div>
+          <div class="field" id="refField" hidden><label for="rcRef">Référence de la transaction</label><input type="text" id="rcRef" placeholder="Code reçu par SMS"></div>
+          <div class="field"><label for="rcDate">Date du paiement</label><input type="date" id="rcDate"></div>
+          <div class="field"><label for="rcObj">Objet</label><input type="text" id="rcObj"></div>
+          <div class="err" id="rcErr" role="alert" hidden></div>
+          <button type="submit" class="btn" id="rcBtn">Émettre le reçu</button>
+        </form>
+      </div>
+
+      <div id="receiptView" hidden></div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px"><h2 style="font-size:1.15rem;font-weight:800">Reçus émis</h2><span class="muted small" id="rcCount"></span></div>
+        <div id="rcList" class="list"><p class="muted">Chargement…</p></div>
+      </div>
+
+      <div class="card" id="rcTotals" hidden><div class="label" style="margin-bottom:10px">Encaissé</div><div class="tot" id="rcTot"></div></div>
+
+      <details class="card">
+        <summary>Mentions du reçu (NIF, STAT, adresse)</summary>
+        <form class="form" id="setForm" novalidate>
+          <div class="field"><label for="setNif">NIF</label><input type="text" id="setNif"></div>
+          <div class="field"><label for="setStat">STAT</label><input type="text" id="setStat"></div>
+          <div class="field"><label for="setAddr">Adresse</label><input type="text" id="setAddr" placeholder="Antananarivo, Madagascar"></div>
+          <button type="submit" class="btn ghost">Enregistrer</button>
+        </form>
+      </details>
+    </section>
+  </main>
+</div>
+
+<div class="qr" id="qrOverlay" hidden>
+  <div class="box">
+    <img src="/logo-blue.png" alt="Akaa" width="71" height="36" style="height:36px;width:auto">
+    <div class="label">Présence et avis</div>
+    <div id="qrSvg" style="width:100%;display:flex;justify-content:center"></div>
+    <div class="small muted" id="qrUrl"></div>
+    <div><div class="label">Code de la séance</div><div class="bigcode" id="qrCode">····</div></div>
+    <button type="button" class="btn ghost" id="qrClose" style="width:100%">Fermer</button>
+  </div>
+</div>
+<div id="fallback" class="qr" hidden>
+  <div class="box" style="text-align:left;align-items:stretch">
+    <p class="small muted">Copie automatique impossible. Le texte est sélectionné : copie-le.</p>
+    <textarea id="fallbackTxt" readonly style="min-height:200px"></textarea>
+    <button type="button" class="btn ghost" id="fallbackClose">Fermer</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+'use strict';
+var $=function(i){return document.getElementById(i)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var MODES=['Espèces','Mvola','Orange Money','Airtel Money'], KINDS=['Paiement intégral','Acompte','Solde'];
+var OBJET='Formation « Reprendre la main sur l’IA » · séances des 10 et 17 oct. 2026';
+var CONTACT={who:'Rajo Rajaonarivelo, Managing Director',wa:'+261 32 40 334 24',mail:'rajo@quarantrois-madagascar.com'};
+var SESS={s1:'Samedi 10 octobre 2026',s2:'Samedi 17 octobre 2026'};
+var REC={'oui':'Recommande','peut-etre':'Peut-être','non':'Ne recommande pas'};
+var fmtAr=function(n){return Math.round(Number(n)||0).toLocaleString('fr-FR').replace(/[  ]/g,' ')+' Ar'};
+var fmtDate=function(i){var p=String(i||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''};
+var fmtTime=function(i){try{return new Date(i).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Indian/Antananarivo'})}catch(e){return ''}};
+var todayISO=function(){try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Antananarivo'}).format(new Date())}catch(e){return new Date().toISOString().slice(0,10)}};
+var showPhone=function(p){return p?'+'+p.replace(/^(\d{3})(\d{2})(\d{3})(\d{2})(\d{2})$/,'$1 $2 $3 $4 $5'):''};
+
+var PIN='',D=null,sid='s1',tab='pres',viewing=null,confirmVoid=null,confirmRm=null,timer=null,busy=false;
+try{PIN=sessionStorage.getItem('akaa_pin')||''}catch(e){}
+
+var tT=null;
+function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tT);tT=setTimeout(function(){t.hidden=true},2800)}
+function copy(text,msg){
+  function fb(){$('fallback').hidden=false;var t=$('fallbackTxt');t.value=text;t.focus();t.select()}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){toast(msg)},fb);else fb()}catch(e){fb()}
+}
+function api(action,data){
+  return fetch('/api/admin',{method:'POST',headers:{'content-type':'application/json','x-admin-pin':PIN},body:JSON.stringify(Object.assign({action:action},data||{}))})
+    .catch(function(){var e=new Error('network');throw e})
+    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok){var e=new Error(j.error||'server');e.status=r.status;throw e}return j})});
+}
+var ERR={network:'Pas de connexion.',phone:'Numéro invalide. Exemple : 034 00 000 00.',name:'Saisis le nom.',amount:'Montant invalide.',mode:'Choisis un mode de paiement.',server:'Erreur du serveur. Réessaie.'};
+
+/* Accès */
+function enter(){
+  $('gate').hidden=true;$('app').hidden=false;
+  refresh(true);clearInterval(timer);
+  timer=setInterval(function(){if(!document.hidden&&!busy)refresh(true)},30000);
+}
+$('gateForm').addEventListener('submit',function(e){
+  e.preventDefault();PIN=$('pin').value.trim();$('gateErr').hidden=true;$('gateBtn').disabled=true;
+  api('overview').then(function(j){try{sessionStorage.setItem('akaa_pin',PIN)}catch(_){}D=j;sid=j.current||'s1';enter()})
+   .catch(function(err){$('gateErr').textContent=err.status===401?'Code incorrect.':(ERR[err.message]||ERR.server);$('gateErr').hidden=false})
+   .then(function(){$('gateBtn').disabled=false});
+});
+$('quitBtn').onclick=function(){try{sessionStorage.removeItem('akaa_pin')}catch(e){}location.reload()};
+$('refreshBtn').onclick=function(){refresh()};
+
+function refresh(silent){
+  return api('overview').then(function(j){D=j;renderAll();if(!silent)toast('À jour.')})
+    .catch(function(e){if(e.status===401){try{sessionStorage.removeItem('akaa_pin')}catch(_){}location.reload()}else if(!silent)toast(ERR[e.message]||ERR.server)});
+}
+
+/* Navigation */
+document.querySelector('.tabs').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-tab]');if(!b)return;tab=b.dataset.tab;renderChrome();
+});
+$('sessSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-sid]');if(!b)return;sid=b.dataset.sid;confirmRm=null;renderAll();
+});
+function renderChrome(){
+  document.querySelectorAll('.tabs button').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===tab))});
+  ['pres','avis','rec'].forEach(function(k){$('t-'+k).hidden=(k!==tab)});
+  $('sessSeg').hidden=(tab==='rec');
+  document.querySelectorAll('#sessSeg button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.sid===sid))});
+}
+
+/* Rendu */
+function renderAll(){
+  if(!D)return;
+  renderChrome();
+  $('code').textContent=D.code||'—';
+  renderPres();renderAvis();renderRec();
+}
+function sortedBy(arr,k){return arr.slice().sort(function(a,b){return String(a[k]).localeCompare(String(b[k]))})}
+
+function renderPres(){
+  var list=sortedBy(D.sessions[sid].presence,'at');
+  $('pCount').textContent=list.length;
+  $('pBar').style.width=Math.min(100,list.length*25)+'%';
+  $('pList').innerHTML=list.length?list.map(function(p){
+    var meta=[showPhone(p.phone),p.email,p.company].filter(Boolean).map(esc).join(' · ');
+    var key=sid+'_'+p.phone;
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(p.name)+'</div><div class="small muted">Arrivé(e) à '+esc(fmtTime(p.at))+(meta?' · '+meta:'')+'</div></div>'+
+      (confirmRm===key?'<button type="button" class="btn danger sm" data-rm="'+esc(p.phone)+'">Confirmer</button>':'<button type="button" class="btn ghost sm" data-ask="'+esc(key)+'" aria-label="Retirer '+esc(p.name)+'">Retirer</button>')+'</div>';
+  }).join(''):'<p class="muted">Personne pour le moment. Les participants se déclarent eux-mêmes depuis leur téléphone.</p>';
+}
+$('pList').addEventListener('click',function(e){
+  var a=e.target.closest('[data-ask]'),r=e.target.closest('[data-rm]');
+  if(a){confirmRm=a.dataset.ask;renderPres();return}
+  if(r){
+    api('removePresence',{sid:sid,phone:r.dataset.rm}).then(function(){confirmRm=null;toast('Retiré.');return refresh(true)}).catch(function(){toast(ERR.server)});
+  }
+});
+$('addForm').addEventListener('submit',function(e){
+  e.preventDefault();if(busy)return;busy=true;
+  api('addPresence',{sid:sid,name:$('aName').value,phone:$('aPhone').value,email:$('aMail').value,company:$('aOrg').value})
+   .then(function(j){$('addForm').reset();toast(j.already?'Déjà présent(e).':'Ajouté(e).');return refresh(true)})
+   .catch(function(er){toast(ERR[er.message]||ERR.server)}).then(function(){busy=false});
+});
+$('copyPres').onclick=function(){
+  var l=['Fiche de présence · '+SESS[sid],'Formation « Reprendre la main sur l’IA » · Koon Space, Ambatonakanga',''];
+  sortedBy(D.sessions[sid].presence,'name').forEach(function(p){l.push('• '+p.name+' · '+showPhone(p.phone)+' · arrivé(e) à '+fmtTime(p.at))});
+  l.push('','Présents : '+D.sessions[sid].presence.length);copy(l.join('\n'),'Liste copiée.');
+};
+
+function renderAvis(){
+  var list=sortedBy(D.sessions[sid].feedback,'at').reverse();
+  if(!list.length){$('avisBox').innerHTML='<p class="muted">Aucun avis pour cette séance. Les participants le donnent depuis l’onglet « Mon avis ».</p>';return}
+  var avg=list.reduce(function(s,f){return s+f.score},0)/list.length, yes=list.filter(function(f){return f.recommend==='oui'}).length;
+  $('avisBox').innerHTML='<div class="stats"><div><b>'+list.length+'</b><span class="small muted">avis</span></div><div><b>'+avg.toFixed(1).replace('.',',')+'</b><span class="small muted">note /10</span></div><div><b>'+yes+'/'+list.length+'</b><span class="small muted">recommandent</span></div></div><div style="margin-top:14px">'+
+  list.map(function(f){
+    return '<div class="fb"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><strong style="overflow-wrap:anywhere">'+esc(f.name)+'</strong><span class="pill">'+esc(f.score)+'/10</span></div>'+
+    (f.helped?'<p><span class="muted">Aidé : </span>'+esc(f.helped)+'</p>':'')+(f.missing?'<p><span class="muted">Manque : </span>'+esc(f.missing)+'</p>':'')+
+    (f.next?'<p><span class="muted">Suite souhaitée : </span>'+esc(f.next)+'</p>':'')+(f.quote?'<p><span class="muted">Mot : </span>« '+esc(f.quote)+' »</p>':'')+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><span class="pill amber">'+esc(REC[f.recommend]||'')+'</span>'+(f.consentCite?'<span class="pill ok">Citation autorisée</span>':'')+(f.consentContact?'<span class="pill ok">Contact autorisé</span>':'')+'</div></div>';
+  }).join('')+'</div>';
+}
+$('copyAvis').onclick=function(){
+  var list=sortedBy(D.sessions[sid].feedback,'at');
+  var avg=list.length?(list.reduce(function(s,f){return s+f.score},0)/list.length).toFixed(1):'-';
+  var t=['Avis · '+SESS[sid],'Note moyenne : '+avg+'/10 ('+list.length+' avis)',''];
+  list.forEach(function(f){t.push(f.name+' · '+f.score+'/10 · '+(REC[f.recommend]||''));if(f.helped)t.push('  Aidé : '+f.helped);if(f.missing)t.push('  Manque : '+f.missing);if(f.next)t.push('  Suite : '+f.next);if(f.quote)t.push('  Mot : « '+f.quote+' »'+(f.consentCite?' (citation autorisée)':''));t.push('')});
+  copy(t.join('\n'),'Synthèse copiée.');
+};
+
+/* Reçus */
+function people(){
+  var m={};['s1','s2'].forEach(function(k){D.sessions[k].presence.forEach(function(p){if(!m[p.phone])m[p.phone]=p})});
+  return Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return a.name.localeCompare(b.name)});
+}
+function buildStatic(){
+  $('modes').innerHTML=MODES.map(function(m,i){return '<label class="chip"><input type="radio" name="mode" value="'+esc(m)+'"'+(i===0?' checked':'')+'><span>'+esc(m)+'</span></label>'}).join('');
+  $('kinds').innerHTML=KINDS.map(function(k,i){return '<label class="chip"><input type="radio" name="kind" value="'+esc(k)+'"'+(i===0?' checked':'')+'><span>'+esc(k)+'</span></label>'}).join('');
+  $('rcDate').value=todayISO();$('rcObj').value=OBJET;
+}
+buildStatic();
+$('modes').addEventListener('change',function(){var m=document.querySelector('input[name="mode"]:checked').value;$('refField').hidden=(m==='Espèces')});
+$('rcPick').addEventListener('change',function(){
+  var p=people().find(function(x){return x.phone===$('rcPick').value});if(!p)return;
+  $('rcName').value=p.name;$('rcPhone').value=showPhone(p.phone);$('rcMail').value=p.email||'';
+});
+function renderRec(){
+  var cur=$('rcPick').value;
+  $('rcPick').innerHTML='<option value="">Choisir… ou saisir ci-dessous</option>'+people().map(function(p){return '<option value="'+esc(p.phone)+'">'+esc(p.name)+'</option>'}).join('');
+  if([].some.call($('rcPick').options,function(o){return o.value===cur}))$('rcPick').value=cur;
+  var rs=D.receipts.slice().sort(function(a,b){return (b.seq||0)-(a.seq||0)||String(b.number).localeCompare(String(a.number))});
+  $('rcCount').textContent=rs.length?rs.length+(rs.length>1?' reçus':' reçu'):'';
+  $('rcList').innerHTML=rs.length?rs.map(function(r){var v=r.status==='annulé';
+    return '<div class="item"><button type="button" class="open" data-num="'+esc(r.number)+'"><div style="min-width:0"><div class="nm'+(v?' void':'')+'">'+esc(r.name)+'</div><div class="small muted"><span class="mono">'+esc(r.number)+'</span> · '+esc(r.mode)+' · '+esc(fmtDate(r.date))+(v?' · annulé':'')+'</div></div><div class="amount'+(v?' void':'')+'">'+esc(fmtAr(r.amount))+'</div></button></div>'}).join(''):'<p class="muted">Aucun reçu émis. Le premier portera le numéro REC-2026-0001.</p>';
+  var valid=rs.filter(function(r){return r.status!=='annulé'});$('rcTotals').hidden=!valid.length;
+  if(valid.length){var h='',sum=0;MODES.forEach(function(m){var t=valid.filter(function(r){return r.mode===m}).reduce(function(s,r){return s+(Number(r.amount)||0)},0);sum+=t;if(t)h+='<span>'+esc(m)+'</span><span>'+esc(fmtAr(t))+'</span>'});h+='<span class="t">Total</span><span class="t">'+esc(fmtAr(sum))+'</span>';$('rcTot').innerHTML=h}
+  var s=D.settings||{};if(!$('setNif').dataset.f){$('setNif').value=s.nif||'';$('setStat').value=s.stat||'';$('setAddr').value=s.address||'';$('setNif').dataset.f='1'}
+  renderReceipt();
+}
+$('rcForm').addEventListener('submit',function(e){
+  e.preventDefault();if(busy)return;$('rcErr').hidden=true;busy=true;$('rcBtn').disabled=true;
+  var mode=document.querySelector('input[name="mode"]:checked').value, kind=document.querySelector('input[name="kind"]:checked').value;
+  api('issueReceipt',{name:$('rcName').value,phone:$('rcPhone').value,email:$('rcMail').value,kind:kind,amount:$('rcAmt').value,mode:mode,ref:$('rcRef').value,date:$('rcDate').value,objet:$('rcObj').value})
+   .then(function(j){viewing=j.receipt.number;confirmVoid=null;$('rcRef').value='';$('rcName').value='';$('rcPhone').value='';$('rcMail').value='';$('rcPick').value='';toast('Reçu '+j.receipt.number+' émis.');return refresh(true).then(function(){$('receiptView').scrollIntoView({behavior:'smooth',block:'start'})})})
+   .catch(function(er){$('rcErr').textContent=ERR[er.message]||ERR.server;$('rcErr').hidden=false}).then(function(){busy=false;$('rcBtn').disabled=false});
+});
+$('rcList').addEventListener('click',function(e){var b=e.target.closest('button[data-num]');if(!b)return;viewing=b.dataset.num;confirmVoid=null;renderReceipt();$('receiptView').scrollIntoView({behavior:'smooth',block:'start'})});
+
+function receiptText(r){
+  var s=D.settings||{},l=['REÇU DE PAIEMENT N° '+r.number+(r.status==='annulé'?' (ANNULÉ)':''),'Quarantrois, en partenariat avec Akaa','','Date : '+fmtDate(r.date),'Reçu de : '+r.name,'Montant : '+fmtAr(r.amount)+' ('+r.kind+')','Mode de paiement : '+r.mode+(r.ref?' · réf. '+r.ref:''),'Objet : '+r.objet,'','Merci de votre confiance.',CONTACT.who,'WhatsApp '+CONTACT.wa+' · '+CONTACT.mail];
+  var legal=[s.nif?'NIF '+s.nif:'',s.stat?'STAT '+s.stat:'',s.address||''].filter(Boolean).join(' · ');if(legal)l.push(legal);
+  return l.join('\n');
+}
+function renderReceipt(){
+  var box=$('receiptView'),r=D&&D.receipts.find(function(x){return x.number===viewing});
+  if(!r){box.hidden=true;box.innerHTML='';return}
+  var v=r.status==='annulé',s=D.settings||{},txt=receiptText(r);
+  var legal=[s.nif?'NIF '+esc(s.nif):'',s.stat?'STAT '+esc(s.stat):'',s.address?esc(s.address):''].filter(Boolean).join(' · ');
+  var wa=r.phone?'https://wa.me/'+r.phone+'?text='+encodeURIComponent(txt):'';
+  var mail=r.email?'mailto:'+encodeURIComponent(r.email).replace(/%40/g,'@')+'?subject='+encodeURIComponent('Reçu de paiement '+r.number)+'&body='+encodeURIComponent(txt):'';
+  box.hidden=false;
+  box.innerHTML='<div class="paper">'+(v?'<div class="stamp">ANNULÉ</div>':'')+
+   '<div class="band"><img src="/logo-blue.png" alt="Akaa" width="67" height="34"><div style="text-align:right"><div class="label">Reçu de paiement</div><div class="mono" style="font-weight:500;color:var(--ink)">'+esc(r.number)+'</div></div></div>'+
+   '<div class="body"><div><div class="label">Montant reçu</div><div class="amt'+(v?' void':'')+'">'+esc(fmtAr(r.amount))+'</div></div>'+
+   '<dl class="dl"><dt>Date</dt><dd>'+esc(fmtDate(r.date))+'</dd><dt>Reçu de</dt><dd>'+esc(r.name)+'</dd><dt>Type</dt><dd>'+esc(r.kind)+'</dd><dt>Mode</dt><dd>'+esc(r.mode)+'</dd>'+(r.ref?'<dt>Référence</dt><dd class="mono">'+esc(r.ref)+'</dd>':'')+'<dt>Objet</dt><dd>'+esc(r.objet)+'</dd></dl>'+
+   '<div class="issuer"><strong>Quarantrois</strong><span class="small muted">en partenariat avec Akaa</span><span class="small">'+esc(CONTACT.who)+'</span><span class="small">WhatsApp '+esc(CONTACT.wa)+' · '+esc(CONTACT.mail)+'</span>'+(legal?'<span class="small muted">'+legal+'</span>':'')+'<span class="small muted" style="margin-top:6px">Ce reçu atteste d’un paiement. Il ne tient pas lieu de facture.</span></div></div></div>'+
+   '<div class="card stack" style="gap:12px;margin-top:12px"><div class="label">Envoyer le reçu</div><div class="row">'+
+   (wa?'<a class="btn" href="'+esc(wa)+'" target="_blank" rel="noopener">WhatsApp</a>':'<span class="btn" aria-disabled="true">WhatsApp : pas de numéro</span>')+
+   (mail?'<a class="btn ghost" href="'+esc(mail)+'" target="_blank" rel="noopener">E-mail</a>':'')+
+   '<button type="button" class="btn ghost" data-act="share">Partager l’image</button><button type="button" class="btn ghost" data-act="copy">Copier le texte</button></div>'+
+   '<p class="small muted">« Partager l’image » ouvre le partage du téléphone : choisis WhatsApp pour envoyer le reçu en image.</p></div>'+
+   (v?'':'<div class="row" style="margin-top:12px">'+(confirmVoid===r.number?'<button type="button" class="btn danger" data-act="void-yes">Confirmer l’annulation</button><button type="button" class="btn ghost" data-act="void-no">Garder le reçu</button>':'<button type="button" class="btn danger" data-act="void">Annuler ce reçu</button>')+'</div>');
+}
+$('receiptView').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-act]');if(!b)return;var a=b.dataset.act,r=D.receipts.find(function(x){return x.number===viewing});if(!r)return;
+  if(a==='copy')copy(receiptText(r),'Texte du reçu copié.');
+  else if(a==='share')shareImage(r);
+  else if(a==='void'){confirmVoid=r.number;renderReceipt()}
+  else if(a==='void-no'){confirmVoid=null;renderReceipt()}
+  else if(a==='void-yes'){api('voidReceipt',{number:r.number}).then(function(){confirmVoid=null;toast('Reçu annulé.');return refresh(true)}).catch(function(){toast(ERR.server)})}
+});
+$('setForm').addEventListener('submit',function(e){
+  e.preventDefault();api('saveSettings',{nif:$('setNif').value,stat:$('setStat').value,address:$('setAddr').value}).then(function(j){D.settings=j.settings;toast('Mentions enregistrées.');renderReceipt()}).catch(function(){toast(ERR.server)});
+});
+
+/* Image du reçu */
+function wrap(ctx,text,maxW){var w=String(text).split(' '),lines=[],cur='';w.forEach(function(x){var t=cur?cur+' '+x:x;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=x}else cur=t});if(cur)lines.push(cur);return lines}
+function drawReceipt(r){
+  var fonts=document.fonts?Promise.all([document.fonts.load('300 60px "Inter Tight"'),document.fonts.load('500 22px "IBM Plex Mono"'),document.fonts.load('700 26px "Inter Tight"'),document.fonts.load('400 24px "Inter Tight"')]).catch(function(){}):Promise.resolve();
+  return fonts.then(function(){return new Promise(function(res){
+    var img=new Image();img.onload=go;img.onerror=go;img.src='/logo-blue.png';
+    function go(){
+      var W=900,pad=64,c=document.createElement('canvas');c.width=W;c.height=1500;var x=c.getContext('2d'),y;
+      var F='"Inter Tight","Helvetica Neue",Helvetica,Arial,sans-serif',M='"IBM Plex Mono",Menlo,Consolas,monospace',s=D.settings||{};
+      x.fillStyle='#fff';x.fillRect(0,0,W,1500);
+      x.fillStyle='#EAF1FF';x.fillRect(0,0,W,230);
+      if(img.width)x.drawImage(img,pad,70,Math.round(90*img.width/img.height),90);
+      x.textAlign='right';x.fillStyle='#1B4FC8';x.font='500 22px '+M;x.fillText('REÇU DE PAIEMENT',W-pad,108);
+      x.fillStyle='#0F1E3C';x.font='500 32px '+M;x.fillText(r.number,W-pad,156);x.textAlign='left';
+      y=312;x.fillStyle='#1B4FC8';x.font='500 22px '+M;x.fillText('MONTANT REÇU',pad,y);
+      y+=82;x.fillStyle='#0E1726';x.font='300 78px '+F;x.fillText(fmtAr(r.amount).replace(/ /g,' '),pad,y);
+      y+=36;x.strokeStyle='#E2E8F2';x.lineWidth=2;x.beginPath();x.moveTo(pad,y);x.lineTo(W-pad,y);x.stroke();
+      function row(k,v,fs){y+=62;x.fillStyle='#5B6678';x.font='400 24px '+F;x.fillText(k,pad,y);x.fillStyle='#0E1726';x.font='700 '+(fs||28)+'px '+F;var ls=wrap(x,v,W-pad*2-240);ls.forEach(function(l,i){x.textAlign='right';x.fillText(l,W-pad,y+i*36);x.textAlign='left'});y+=(ls.length-1)*36}
+      row('Date',fmtDate(r.date));row('Reçu de',r.name);row('Type',r.kind);row('Mode',r.mode);if(r.ref)row('Référence',r.ref);row('Objet',r.objet,26);
+      y+=46;x.fillStyle='#D6E4FF';x.fillRect(pad,y,W-pad*2,3);
+      y+=62;x.fillStyle='#0E1726';x.font='600 32px '+F;x.fillText('Quarantrois',pad,y);
+      x.font='400 24px '+F;x.fillStyle='#5B6678';y+=38;x.fillText('en partenariat avec Akaa',pad,y);
+      x.fillStyle='#0E1726';y+=38;x.fillText(CONTACT.who,pad,y);y+=36;x.fillText('WhatsApp '+CONTACT.wa,pad,y);y+=36;x.fillText(CONTACT.mail,pad,y);
+      var legal=[s.nif?'NIF '+s.nif:'',s.stat?'STAT '+s.stat:'',s.address||''].filter(Boolean).join(' · ');if(legal){x.fillStyle='#5B6678';y+=36;x.fillText(legal,pad,y)}
+      y+=56;x.fillStyle='#5B6678';x.font='italic 400 22px '+F;x.fillText('Ce reçu atteste d’un paiement. Il ne tient pas lieu de facture.',pad,y);
+      if(r.status==='annulé'){x.save();x.translate(W/2,520);x.rotate(-0.17);x.strokeStyle='#C0362C';x.fillStyle='#C0362C';x.lineWidth=8;x.font='800 110px '+F;x.textAlign='center';var tw=x.measureText('ANNULÉ').width;x.strokeRect(-tw/2-30,-100,tw+60,140);x.fillText('ANNULÉ',0,0);x.restore()}
+      var h=Math.min(1500,y+64),o=document.createElement('canvas');o.width=W;o.height=h;o.getContext('2d').drawImage(c,0,0,W,h,0,0,W,h);
+      o.toBlob(res,'image/png');
+    }
+  })});
+}
+function shareImage(r){
+  drawReceipt(r).then(function(blob){
+    var file=new File([blob],r.number+'.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      return navigator.share({files:[file],text:'Reçu de paiement '+r.number}).catch(function(e){if(e&&e.name!=='AbortError')throw e});
+    }
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=r.number+'.png';document.body.appendChild(a);a.click();a.remove();toast('Image enregistrée.');
+  }).catch(function(){toast('Image impossible. Utilise « Copier le texte ».')});
+}
+
+/* QR et code à afficher dans la salle */
+$('qrBtn').onclick=function(){
+  var url=location.origin+'/';$('qrUrl').textContent=url;$('qrCode').textContent=D.code||'—';
+  try{var q=qrcode(0,'M');q.addData(url);q.make();$('qrSvg').innerHTML=q.createSvgTag({cellSize:6,margin:2,scalable:true});
+    var sv=$('qrSvg').querySelector('svg');if(sv&&!sv.getAttribute('viewBox')&&sv.getAttribute('width')){sv.setAttribute('viewBox','0 0 '+sv.getAttribute('width')+' '+sv.getAttribute('height'));sv.removeAttribute('width');sv.removeAttribute('height')}
+  }catch(e){$('qrSvg').textContent=''}
+  $('qrOverlay').hidden=false;
+};
+$('qrClose').onclick=function(){$('qrOverlay').hidden=true};
+$('fallbackClose').onclick=function(){$('fallback').hidden=true};
+
+/* Reprise automatique si le code est déjà en mémoire */
+if(PIN){api('overview').then(function(j){D=j;sid=j.current||'s1';enter()}).catch(function(){try{sessionStorage.removeItem('akaa_pin')}catch(e){}})}
+})();
+</script>
+</body>
+</html>

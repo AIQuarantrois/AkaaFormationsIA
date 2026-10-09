@@ -1,0 +1,8 @@
+Akaa Séances : présence, avis et reçus (site Vercel)
+
+1. Créer un projet Vercel nommé akaa-seances (importer ce dossier depuis GitHub, ou : vercel deploy dans ce dossier).
+2. Storage > Create > Blob, accès PRIVÉ, connecté au projet (ajoute BLOB_READ_WRITE_TOKEN).
+3. Settings > Environment Variables (Production) :
+   ADMIN_PIN     = code d'accès organisateur (10 caractères ou plus)
+   SESSION_CODE  = code à 4 chiffres affiché dans la salle
+4. Redéployer. Participants : /   Organisateur : /admin

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F8FAFE">
+<title>Présence et avis · Akaa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/akaa.css">
+</head>
+<body>
+<header class="topbar"><div class="wrap"><img src="/logo-blue.png" alt="Akaa" width="79" height="40"></div></header>
+
+<main class="page">
+  <div class="wrap stack" style="gap:16px">
+    <div class="stack" style="gap:14px;padding-block:12px 6px">
+      <div class="eyebrow" id="eyebrow">Formation · Séance 1</div>
+      <h1 class="display">Reprendre la main sur l’IA.</h1>
+      <p class="lead">Ta fiche de présence et ton avis sur la séance, depuis ton téléphone.</p>
+      <div class="meta"><span id="sessDate">Samedi 10 octobre 2026</span><span>9h30 – 12h00</span><span>Koon Space, Ambatonakanga</span></div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Choisir">
+      <button type="button" role="tab" id="tabP" aria-selected="true" aria-controls="panP">Ma présence</button>
+      <button type="button" role="tab" id="tabF" aria-selected="false" aria-controls="panF">Mon avis</button>
+    </div>
+
+    <!-- PRÉSENCE -->
+    <section id="panP" role="tabpanel" aria-labelledby="tabP" class="card stack" style="gap:18px">
+      <div id="pForm" class="stack" style="gap:18px">
+        <div class="stack" style="gap:6px">
+          <div class="label">Fiche de présence</div>
+          <h2 class="h2">Je confirme ma présence</h2>
+          <p class="muted">Une minute, depuis ton téléphone. Pas de papier.</p>
+        </div>
+        <form class="form" id="presenceForm" novalidate>
+          <div class="field"><label for="pName">Nom et prénom</label><input type="text" id="pName" autocomplete="name" required></div>
+          <div class="field"><label for="pPhone">Numéro WhatsApp</label><input type="tel" id="pPhone" inputmode="tel" autocomplete="tel" placeholder="034 00 000 00" required><span class="hint">Ton reçu de paiement t’y sera envoyé.</span></div>
+          <div class="field"><label for="pMail">E-mail <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="email" id="pMail" autocomplete="email"></div>
+          <div class="field"><label for="pOrg">Entreprise <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="pOrg" autocomplete="organization"></div>
+          <div class="field"><label for="pCode">Code de la séance</label><input type="text" id="pCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····"><span class="hint">Le code est affiché dans la salle.</span></div>
+          <div class="err" id="pErr" role="alert" hidden></div>
+          <button type="submit" class="btn" id="pBtn">Je suis présent(e)</button>
+        </form>
+        <div class="note"><div class="label">À savoir</div><p class="small">Ton nom et ton numéro servent à la fiche de présence et à l’envoi de ton reçu.</p></div>
+      </div>
+      <div id="pDone" class="done" hidden>
+        <div class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h2 class="h2" id="pThanks">Présence enregistrée</h2>
+        <p class="muted" id="pDoneTxt">Bienvenue. Reviens sur cette page en fin de séance pour donner ton avis.</p>
+        <button type="button" class="btn ghost" id="toAvis">Donner mon avis</button>
+      </div>
+    </section>
+
+    <!-- AVIS -->
+    <section id="panF" role="tabpanel" aria-labelledby="tabF" class="card stack" style="gap:18px" hidden>
+      <div id="fFormBox" class="stack" style="gap:18px">
+        <div class="stack" style="gap:6px">
+          <div class="label">Retour sur la séance</div>
+          <h2 class="h2">Ton avis nous aide</h2>
+          <p class="muted">Deux minutes pour dire ce qui a marché et ce qui manque.</p>
+        </div>
+        <form class="form" id="feedbackForm" novalidate>
+          <div class="field"><label for="fName">Nom et prénom</label><input type="text" id="fName" autocomplete="name"></div>
+          <div class="field"><label for="fPhone">Numéro WhatsApp</label><input type="tel" id="fPhone" inputmode="tel" autocomplete="tel" placeholder="034 00 000 00"><span class="hint">Le même que pour ta présence.</span></div>
+          <div class="field">
+            <span class="lbl" id="scoreLbl">Note globale de la séance, sur 10</span>
+            <div class="scores" id="scores" role="group" aria-labelledby="scoreLbl"></div>
+          </div>
+          <div class="field"><label for="fHelped">Qu’est-ce qui t’a le plus aidé ?</label><textarea id="fHelped"></textarea></div>
+          <div class="field"><label for="fMissing">Qu’est-ce qui manque ou peut être amélioré ?</label><textarea id="fMissing"></textarea></div>
+          <div class="field">
+            <span class="lbl" id="recLbl">Recommanderais-tu cette formation ?</span>
+            <div class="chips three" role="radiogroup" aria-labelledby="recLbl">
+              <label class="chip"><input type="radio" name="rec" value="oui"><span>Oui</span></label>
+              <label class="chip"><input type="radio" name="rec" value="peut-etre"><span>Peut-être</span></label>
+              <label class="chip"><input type="radio" name="rec" value="non"><span>Non</span></label>
+            </div>
+          </div>
+          <div class="field"><label for="fNext">Ce que tu aimerais apprendre ensuite <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="text" id="fNext"></div>
+          <div class="field"><label for="fQuote">Un mot pour les futurs participants <span class="muted" style="font-weight:400">(facultatif)</span></label><textarea id="fQuote"></textarea></div>
+          <label class="check"><input type="checkbox" id="fCite"><span>J’accepte que ce mot soit cité, avec mon prénom.</span></label>
+          <label class="check"><input type="checkbox" id="fContact"><span>J’accepte d’être contacté(e) par WhatsApp ou e-mail pour les prochaines formations.</span></label>
+          <div class="field"><label for="fCode">Code de la séance</label><input type="text" id="fCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····"></div>
+          <div class="err" id="fErr" role="alert" hidden></div>
+          <button type="submit" class="btn" id="fBtn">Envoyer mon avis</button>
+        </form>
+      </div>
+      <div id="fDone" class="done" hidden>
+        <div class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h2 class="h2" id="fThanks">Merci !</h2>
+        <p class="muted">Ton avis est bien enregistré. À très vite pour la suite.</p>
+      </div>
+    </section>
+
+    <p class="foot">Comprendre. Expérimenter. Appliquer.<br>Akaa, en partenariat avec Quarantrois · © 2026</p>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+var $=function(i){return document.getElementById(i)};
+var KEY='akaa_participant';
+
+/* Séance du jour (le serveur décide aussi, avec la même règle) */
+var d=new Intl.DateTimeFormat('en-CA',{timeZone:'Indian/Antananarivo'}).format(new Date());
+var second=d>='2026-10-17';
+$('eyebrow').textContent='Formation · Séance '+(second?'2':'1');
+$('sessDate').textContent=second?'Samedi 17 octobre 2026':'Samedi 10 octobre 2026';
+
+/* Mémoire locale : évite de tout retaper entre présence et avis */
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
+function save(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+var mem=load();
+['Name','Phone'].forEach(function(k){var v=mem[k.toLowerCase()]||'';$('p'+k).value=v;$('f'+k).value=v});
+$('pMail').value=mem.email||'';$('pOrg').value=mem.company||'';
+$('pCode').value=mem.code||'';$('fCode').value=mem.code||'';
+
+/* Onglets */
+function tab(which){
+  var p=which==='p';
+  $('tabP').setAttribute('aria-selected',String(p));$('tabF').setAttribute('aria-selected',String(!p));
+  $('panP').hidden=!p;$('panF').hidden=p;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('tabP').onclick=function(){tab('p')};
+$('tabF').onclick=function(){tab('f')};
+$('toAvis').onclick=function(){tab('f')};
+
+/* Notes 1 à 10 */
+var score=0;
+(function(){var h='';for(var i=1;i<=10;i++)h+='<button type="button" data-s="'+i+'" aria-pressed="false">'+i+'</button>';$('scores').innerHTML=h})();
+$('scores').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-s]');if(!b)return;score=+b.dataset.s;
+  [].forEach.call($('scores').children,function(x){x.setAttribute('aria-pressed',String(x===b))});
+});
+
+var MSG={
+  code:'Ce code n’est pas le bon. Il est affiché dans la salle.',
+  phone:'Numéro WhatsApp invalide. Exemple : 034 00 000 00.',
+  name:'Saisis ton nom et ton prénom.',
+  score:'Choisis une note de 1 à 10.',
+  recommend:'Dis-nous si tu recommanderais la formation.',
+  network:'Pas de connexion. Réessaie dans un instant.',
+  server:'Une erreur est survenue. Réessaie, ou préviens l’organisateur.'
+};
+function post(url,data){
+  return fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)})
+    .catch(function(){throw new Error('network')})
+    .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||'server');return j})});
+}
+function showErr(id,key){var e=$(id);e.textContent=MSG[key]||MSG.server;e.hidden=false}
+function first(n){return String(n||'').trim().split(/\s+/)[0]}
+
+/* Présence */
+$('presenceForm').addEventListener('submit',function(ev){
+  ev.preventDefault();$('pErr').hidden=true;
+  var data={name:$('pName').value,phone:$('pPhone').value,email:$('pMail').value,company:$('pOrg').value,code:$('pCode').value};
+  $('pBtn').disabled=true;
+  post('/api/checkin',data).then(function(j){
+    save({name:data.name,phone:data.phone,email:data.email,company:data.company,code:data.code});
+    $('fName').value=data.name;$('fPhone').value=data.phone;$('fCode').value=data.code;
+    $('pThanks').textContent='Merci '+first(j.name)+', c’est noté';
+    $('pDoneTxt').textContent=j.already?'Ta présence était déjà enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.':'Ta présence est enregistrée. Reviens sur cette page en fin de séance pour donner ton avis.';
+    $('pForm').hidden=true;$('pDone').hidden=false;window.scrollTo({top:0,behavior:'smooth'});
+  }).catch(function(e){showErr('pErr',e.message)}).then(function(){$('pBtn').disabled=false});
+});
+
+/* Avis */
+$('feedbackForm').addEventListener('submit',function(ev){
+  ev.preventDefault();$('fErr').hidden=true;
+  var rec=document.querySelector('input[name="rec"]:checked');
+  if(!score){showErr('fErr','score');return}
+  if(!rec){showErr('fErr','recommend');return}
+  var data={name:$('fName').value,phone:$('fPhone').value,code:$('fCode').value,score:score,recommend:rec.value,
+    helped:$('fHelped').value,missing:$('fMissing').value,next:$('fNext').value,quote:$('fQuote').value,
+    consentCite:$('fCite').checked,consentContact:$('fContact').checked};
+  $('fBtn').disabled=true;
+  post('/api/feedback',data).then(function(j){
+    var m=load();m.name=data.name;m.phone=data.phone;m.code=data.code;save(m);
+    $('fThanks').textContent='Merci '+first(j.name)+' !';
+    $('fFormBox').hidden=true;$('fDone').hidden=false;window.scrollTo({top:0,behavior:'smooth'});
+  }).catch(function(e){showErr('fErr',e.message)}).then(function(){$('fBtn').disabled=false});
+});
+})();
+</script>
+</body>
+</html>
