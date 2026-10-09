@@ -21,26 +21,31 @@
     <div id="bad" class="stack" style="gap:14px" hidden>
       <div class="eyebrow">Akaa</div>
       <h1 class="display" style="font-size:2rem">Badge non reconnu.</h1>
-      <p class="lead">Ce lien n'est pas valide, ou aucune séance n'est programmée pour le moment.</p>
+      <p class="lead">Ce lien n'est pas valide. Demande ton badge à l'organisateur.</p>
     </div>
 
-    <div id="ok" class="stack" style="gap:18px" hidden>
-      <div class="stack" style="gap:10px">
-        <div class="eyebrow" id="eyebrow">Confirmation de présence</div>
+    <div id="ok" class="stack" style="gap:16px" hidden>
+      <div class="stack" style="gap:6px;padding-block:12px 6px">
+        <div class="eyebrow">Fiche de présence</div>
         <h1 class="display" style="font-size:2.1rem" id="pname">—</h1>
         <p class="lead" id="meta"></p>
       </div>
 
-      <div id="pending" class="card stack" style="gap:16px" hidden>
-        <p class="muted">Tape le bouton pour confirmer ta présence à cette séance.</p>
-        <button type="button" class="btn" id="confirmBtn">Confirmer ma présence</button>
-        <div class="err" id="err" role="alert" hidden></div>
+      <div id="pending" class="card stack" style="gap:18px">
+        <form class="form" id="confirmForm" novalidate>
+          <div class="field"><label for="bCode">Code de la séance</label><input type="text" id="bCode" class="code-input" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="····" required><span class="hint">Le code est affiché dans la salle.</span></div>
+          <div class="field"><label for="bPhone">Numéro WhatsApp</label><input type="tel" id="bPhone" inputmode="tel" autocomplete="tel" placeholder="034 00 000 00"></div>
+          <div class="field"><label for="bMail">E-mail <span class="muted" style="font-weight:400">(facultatif)</span></label><input type="email" id="bMail" autocomplete="email"></div>
+          <div class="err" id="err" role="alert" hidden></div>
+          <button type="submit" class="btn" id="confirmBtn">Je confirme ma présence</button>
+        </form>
       </div>
 
       <div id="done" class="done" hidden>
         <div class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-        <h2 class="h2">Présence enregistrée</h2>
-        <p class="muted">Pense à donner ton avis sur la séance depuis la page de présence, une fois chez toi si besoin.</p>
+        <h2 class="h2" id="doneTitle">Présence enregistrée</h2>
+        <p class="muted" id="doneTxt"></p>
+        <a class="btn ghost" id="toAvis" href="#">Donner mon avis</a>
       </div>
     </div>
 
@@ -55,29 +60,51 @@ var $=function(i){return document.getElementById(i)};
 var qs=new URLSearchParams(location.search);
 var TOKEN=qs.get('t')||'';
 
-function post(action){
-  return fetch('/api/badge',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:TOKEN,action:action})})
+function post(data){
+  return fetch('/api/badge',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.assign({token:TOKEN},data))})
     .catch(function(){throw new Error('network')})
     .then(function(r){return r.json().catch(function(){return {}}).then(function(j){if(!r.ok)throw new Error(j.error||'server');return j})});
 }
-function render(j){
-  $('loading').hidden=true;$('ok').hidden=false;
-  $('pname').textContent=j.name;
-  $('meta').textContent=(j.course?j.course+' · ':'')+j.cohort+' · Séance '+j.session.index+(j.session.total>1?'/'+j.session.total:'');
-  if(j.already){$('pending').hidden=true;$('done').hidden=false}
-  else{$('pending').hidden=false;$('done').hidden=true}
-}
+var MSG={
+  code:'Ce code n’est pas le bon. Il est affiché dans la salle.',
+  phone:'Numéro WhatsApp invalide. Exemple : 034 00 000 00.',
+  already_enrolled:'Ce numéro est déjà utilisé par une autre inscription.',
+  badge:'Badge non reconnu.',
+  network:'Pas de connexion. Réessaie dans un instant.',
+  server:'Une erreur est survenue. Réessaie, ou préviens l’organisateur.'
+};
+function showErr(key){var e=$('err');e.textContent=MSG[key]||MSG.server;e.hidden=false}
+function first(n){return String(n||'').trim().split(/\s+/)[0]}
+
 if(!TOKEN){$('loading').hidden=true;$('bad').hidden=false}
 else{
-  post('status').then(render).catch(function(){$('loading').hidden=true;$('bad').hidden=false});
+  post({}).then(function(j){
+    $('loading').hidden=true;$('ok').hidden=false;
+    $('pname').textContent='Bonjour, '+first(j.name)+' !';
+    $('meta').textContent=(j.course?j.course+' · ':'')+j.cohort;
+    $('bPhone').value=j.phone||'';$('bMail').value=j.email||'';
+    $('toAvis').href='/?c='+encodeURIComponent(j.cohortSlug);
+  }).catch(function(){$('loading').hidden=true;$('bad').hidden=false});
 }
-$('confirmBtn').onclick=function(){
-  $('err').hidden=true;$('confirmBtn').disabled=true;
-  post('confirm').then(render).catch(function(e){
-    $('err').textContent=e.message==='network'?'Pas de connexion. Réessaie.':'Erreur. Réessaie, ou préviens l’organisateur.';
-    $('err').hidden=false;
-  }).then(function(){$('confirmBtn').disabled=false});
-};
+
+$('confirmForm').addEventListener('submit',function(ev){
+  ev.preventDefault();$('err').hidden=true;
+  var code=$('bCode').value,phone=$('bPhone').value,mail=$('bMail').value;
+  $('confirmBtn').disabled=true;
+  post({action:'confirm',code:code,phone:phone,email:mail}).then(function(j){
+    try{
+      localStorage.setItem('akaa_participant_'+j.cohortSlug,JSON.stringify({
+        code:code,sessionId:j.session.id,enrollmentId:j.enrollmentId,name:j.name,presentFor:j.session.id
+      }));
+    }catch(e){}
+    $('pname').textContent='Bonjour, '+first(j.name)+' !';
+    $('meta').textContent='Séance '+j.session.index+(j.session.total>1?'/'+j.session.total:'');
+    $('doneTxt').textContent=j.already?'Ta présence était déjà enregistrée.':'Ta présence est enregistrée.';
+    $('toAvis').href='/?c='+encodeURIComponent(j.cohortSlug);
+    $('pending').hidden=true;$('done').hidden=false;
+    window.scrollTo({top:0,behavior:'smooth'});
+  }).catch(function(e){showErr(e.message)}).then(function(){$('confirmBtn').disabled=false});
+});
 })();
 </script>
 </body>
