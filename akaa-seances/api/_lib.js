@@ -1,5 +1,5 @@
 import { put, list, get, del } from '@vercel/blob';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomInt } from 'node:crypto';
 
 export const SESSIONS = { s1: '2026-10-10', s2: '2026-10-17' };
 export const MODES = ['Espèces', 'Mvola', 'Orange Money', 'Airtel Money'];
@@ -47,10 +47,25 @@ export async function readBody(request) {
   }
 }
 
-export function checkCode(code) {
-  const expected = process.env.SESSION_CODE;
-  if (!expected) return;
-  if (clean(code, 20).toLowerCase() !== expected.toLowerCase()) throw httpError(403, 'code');
+/* Code de séance : généré automatiquement au premier accès, puis stocké (un par séance). */
+export async function getSessionCode(sid) {
+  const path = `c/${sid}.json`;
+  const [existing] = await readAll(path);
+  if (existing && existing.code) return existing.code;
+  const code = String(randomInt(1000, 10000));
+  try {
+    await putJson(path, { code }, false);
+    return code;
+  } catch (e) {
+    if (!alreadyExists(e)) throw e;
+    const [retry] = await readAll(path);
+    return (retry && retry.code) || code;
+  }
+}
+
+export async function checkCode(code, sid) {
+  const expected = await getSessionCode(sid);
+  if (clean(code, 20) !== expected) throw httpError(403, 'code');
 }
 
 export async function requireAdmin(request) {

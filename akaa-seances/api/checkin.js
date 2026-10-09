@@ -4,8 +4,8 @@ import { json, fail, readBody, checkCode, currentSession, recordPresence } from 
 export async function POST(request) {
   try {
     const b = await readBody(request);
-    checkCode(b.code);
     const sid = currentSession();
+    await checkCode(b.code, sid);
     const { rec, already } = await recordPresence(sid, b);
     return json({ ok: true, sid, already, name: rec.name });
   } catch (e) {

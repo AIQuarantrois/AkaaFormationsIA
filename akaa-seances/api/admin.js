@@ -1,6 +1,6 @@
 import {
   json, fail, readBody, requireAdmin, readAll, putJson, removeBlob, recordPresence, alreadyExists,
-  clean, normPhone, httpError, today, currentSession, SESSIONS, MODES, KINDS, OBJET,
+  clean, normPhone, httpError, today, currentSession, getSessionCode, SESSIONS, MODES, KINDS, OBJET,
 } from './_lib.js';
 
 /* Espace organisateur : toutes les actions exigent le code d'accès (en-tête x-admin-pin). */
@@ -23,15 +23,17 @@ export async function POST(request) {
 }
 
 async function overview() {
-  const [p1, p2, f1, f2, receipts, st] = await Promise.all([
+  const current = currentSession();
+  const [p1, p2, f1, f2, receipts, st, code] = await Promise.all([
     readAll('p/s1/'), readAll('p/s2/'), readAll('f/s1/'), readAll('f/s2/'), readAll('r/'), readAll('m/'),
+    getSessionCode(current),
   ]);
   return {
     sessions: { s1: { presence: p1, feedback: f1 }, s2: { presence: p2, feedback: f2 } },
     receipts,
     settings: st[0] || {},
-    code: process.env.SESSION_CODE || '',
-    current: currentSession(),
+    code,
+    current,
   };
 }
 

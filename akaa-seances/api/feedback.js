@@ -4,8 +4,8 @@ import { json, fail, readBody, checkCode, currentSession, putJson, clean, cleanL
 export async function POST(request) {
   try {
     const b = await readBody(request);
-    checkCode(b.code);
     const sid = currentSession();
+    await checkCode(b.code, sid);
     const name = clean(b.name, 80);
     const phone = normPhone(b.phone);
     const score = Number(b.score);
