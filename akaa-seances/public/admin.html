@@ -384,6 +384,24 @@ details[open]>summary{margin-bottom:14px}
     <iframe id="pdfFrame" title="Aperçu du document" style="flex:1;width:100%;border:1px solid var(--line);border-radius:14px;margin-top:4px;background:#fff"></iframe>
   </div>
 </div>
+<div id="enrEditOverlay" class="qr" hidden>
+  <div class="box" style="max-width:480px;width:100%;align-items:stretch;text-align:left">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px">
+      <div class="label">Modifier l'inscrit</div>
+      <button type="button" class="btn ghost sm" id="eeClose">Fermer</button>
+    </div>
+    <form class="form" id="enrEditForm" novalidate>
+      <input type="hidden" id="eeId">
+      <div class="field"><label for="eeName">Nom et prénom</label><input type="text" id="eeName"></div>
+      <div class="field"><label for="eePhone">Numéro WhatsApp</label><input type="tel" id="eePhone"></div>
+      <div class="field"><label for="eeMail">E-mail</label><input type="email" id="eeMail"></div>
+      <div class="field"><label for="eeOrg">Entreprise</label><input type="text" id="eeOrg"></div>
+      <label class="check"><input type="checkbox" id="eeNews"><span>Accepte de recevoir la newsletter</span></label>
+      <div class="err" id="eeErr" role="alert" hidden></div>
+      <button type="submit" class="btn">Enregistrer</button>
+    </form>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -648,18 +666,30 @@ function renderEnr(){
     var paid=enrPaid(en.id),price=CD.cohort.price||0;
     var payLabel=price?(paid>=price?'Payé':paid>0?'Partiel':'Non payé'):(paid>0?'Payé':'—');
     var payCls=payLabel==='Payé'?'ok':payLabel==='Partiel'?'amber':payLabel==='Non payé'?'bad':'';
-    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(en.name)+(en.status==='annule'?' <span class="pill bad">Annulé</span>':'')+'</div><div class="small muted">'+(en.phone?showPhone(en.phone):'<span class="pill amber">Numéro manquant</span>')+(en.email?' · '+esc(en.email):'')+(en.company?' · '+esc(en.company):'')+'</div><div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'+(payLabel!=='—'?'<span class="pill'+(payCls?' '+payCls:'')+'">'+payLabel+'</span>':'')+(en.newsletter?'<span class="pill ok">Newsletter</span>':'')+(en.completed?'<span class="pill ok">Complété</span>':'')+'</div></div><div style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost sm" data-ph="'+esc(en.id)+'">'+(en.phone?'Modifier n°':'Ajouter n°')+'</button><button type="button" class="btn ghost sm" data-rmenr="'+esc(en.id)+'">Retirer</button></div></div>';
+    return '<div class="item"><div style="min-width:0"><div class="nm">'+esc(en.name)+(en.status==='annule'?' <span class="pill bad">Annulé</span>':'')+'</div><div class="small muted">'+(en.phone?showPhone(en.phone):'<span class="pill amber">Numéro manquant</span>')+(en.email?' · '+esc(en.email):'')+(en.company?' · '+esc(en.company):'')+'</div><div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'+(payLabel!=='—'?'<span class="pill'+(payCls?' '+payCls:'')+'">'+payLabel+'</span>':'')+(en.newsletter?'<span class="pill ok">Newsletter</span>':'')+(en.completed?'<span class="pill ok">Complété</span>':'')+'</div></div><div style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn ghost sm" data-edit="'+esc(en.id)+'">Éditer</button><button type="button" class="btn ghost sm" data-rmenr="'+esc(en.id)+'">Retirer</button></div></div>';
   }).join(''):'<p class="muted">Aucun inscrit pour le moment.</p>';
 }
 $('enrList').addEventListener('click',function(e){
-  var rm=e.target.closest('[data-rmenr]'),ph=e.target.closest('[data-ph]');
+  var rm=e.target.closest('[data-rmenr]'),ed=e.target.closest('[data-edit]');
   if(rm){api('removeEnrollment',{cohortId:cohortId,id:rm.dataset.rmenr}).then(function(){toast('Retiré.');return reloadCohort()}).catch(onErr);return}
-  if(ph){
-    var en=(CD.enrollments||[]).find(function(x){return x.id===ph.dataset.ph});if(!en)return;
-    var v=prompt('Numéro WhatsApp de '+en.name,en.phone?showPhone(en.phone):'');
-    if(v==null)return;
-    api('updateEnrollment',{cohortId:cohortId,id:en.id,phone:v}).then(function(){toast('Numéro enregistré.');return reloadCohort()}).catch(onErr);
+  if(ed){
+    var en=(CD.enrollments||[]).find(function(x){return x.id===ed.dataset.edit});if(!en)return;
+    openEnrEdit(en);
   }
+});
+function openEnrEdit(en){
+  $('eeId').value=en.id;$('eeName').value=en.name||'';
+  $('eePhone').value=en.phone?showPhone(en.phone):'';$('eeMail').value=en.email||'';$('eeOrg').value=en.company||'';
+  $('eeNews').checked=!!en.newsletter;$('eeErr').hidden=true;
+  $('enrEditOverlay').hidden=false;
+}
+$('eeClose').onclick=function(){$('enrEditOverlay').hidden=true};
+$('enrEditForm').addEventListener('submit',function(e){
+  e.preventDefault();if(busy)return;busy=true;$('eeErr').hidden=true;
+  api('updateEnrollment',{cohortId:cohortId,id:$('eeId').value,name:$('eeName').value,phone:$('eePhone').value,email:$('eeMail').value,company:$('eeOrg').value,newsletter:$('eeNews').checked})
+   .then(function(){toast('Inscrit mis à jour.');$('enrEditOverlay').hidden=true;return reloadCohort()})
+   .catch(function(er){$('eeErr').textContent=ERR[er.message]||ERR.server;$('eeErr').hidden=false})
+   .then(function(){busy=false});
 });
 $('enrForm').addEventListener('submit',function(e){
   e.preventDefault();if(busy)return;busy=true;$('enrErr').hidden=true;
